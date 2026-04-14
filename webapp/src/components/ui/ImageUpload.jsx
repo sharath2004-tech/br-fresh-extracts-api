@@ -1,15 +1,13 @@
 import { Link, Loader2, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 
-const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
-const useCloudinary = !!(CLOUD_NAME && UPLOAD_PRESET);
+const API_URL = import.meta.env.VITE_API_URL || '/api/';
+const UPLOAD_SECRET = import.meta.env.VITE_UPLOAD_SECRET || '';
 
 /**
  * Reusable image input: paste a URL  OR  upload from device.
- * If VITE_CLOUDINARY_CLOUD_NAME + VITE_CLOUDINARY_UPLOAD_PRESET are set,
- * uploads to Cloudinary and stores the CDN URL.
- * Otherwise falls back to compressed base64.
+ * Uploads via Django backend (POST /api/upload/) which uses server-side Cloudinary credentials.
+ * Falls back to base64 if the backend returns an error (e.g. Cloudinary not configured).
  */
 export default function ImageUpload({ value, onChange, previewClass = 'h-32 w-full object-cover' }) {
   const [tab, setTab] = useState('url');
@@ -18,17 +16,19 @@ export default function ImageUpload({ value, onChange, previewClass = 'h-32 w-fu
   const [error, setError] = useState('');
   const fileRef = useRef();
 
-  const uploadToCloudinary = async (file) => {
+  const uploadViaBackend = async (file) => {
     const fd = new FormData();
     fd.append('file', file);
-    fd.append('upload_preset', UPLOAD_PRESET);
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+    const headers = {};
+    if (UPLOAD_SECRET) headers['X-Upload-Secret'] = UPLOAD_SECRET;
+    const res = await fetch(`${API_URL}upload/`, {
       method: 'POST',
+      headers,
       body: fd,
     });
     if (!res.ok) throw new Error('Upload failed');
     const data = await res.json();
-    return data.secure_url;
+    return data.url;
   };
 
   const compressToBase64 = (file) => new Promise((resolve) => {
@@ -55,9 +55,13 @@ export default function ImageUpload({ value, onChange, previewClass = 'h-32 w-fu
     setError('');
     setUploading(true);
     try {
-      const src = useCloudinary
-        ? await uploadToCloudinary(file)
-        : await compressToBase64(file);
+      let src;
+      try {
+        src = await uploadViaBackend(file);
+      } catch {
+        // Backend unavailable or not configured — fall back to base64 (local dev)
+        src = await compressToBase64(file);
+      }
       onChange(src);
     } catch (e) {
       setError('Upload failed. Please try again.');
@@ -84,7 +88,7 @@ export default function ImageUpload({ value, onChange, previewClass = 'h-32 w-fu
         <button type="button"
           onClick={() => setTab('upload')}
           className={`flex items-center gap-1.5 px-3 py-1.5 transition-colors ${tab === 'upload' ? 'bg-terra-500 text-white' : 'text-warm-brown/60 hover:bg-sand-100'}`}>
-          <Upload size={12} /> Upload {useCloudinary && <span className="ml-1 text-emerald-400">● CDN</span>}
+          <Upload size={12} /> Upload
         </button>
       </div>
 
@@ -118,7 +122,7 @@ export default function ImageUpload({ value, onChange, previewClass = 'h-32 w-fu
               ? <><Loader2 size={22} className="text-terra-500 animate-spin" /><p className="text-sm text-terra-600">Uploading…</p></>
               : <><Upload size={22} className="text-warm-brown/40" strokeWidth={1.5} />
                   <p className="text-sm text-warm-brown/60">Click or drag image here</p>
-                  <p className="text-xs text-warm-brown/30">{useCloudinary ? 'Uploads to Cloudinary CDN' : 'JPG, PNG, WEBP — stored as base64'}</p>
+                  <p className="text-xs text-warm-brown/30">JPG, PNG, WEBP — uploaded to CDN</p>
                 </>
             }
           </div>

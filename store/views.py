@@ -1,10 +1,15 @@
 # store/views.py
 
+import cloudinary
+import cloudinary.uploader
+from django.conf import settings
 from django.db.models import Sum
 from rest_framework.generics import ListAPIView,ListCreateAPIView,RetrieveUpdateDestroyAPIView,RetrieveUpdateAPIView
+from rest_framework.parsers import MultiPartParser
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny,IsAdminUser
 from rest_framework.response import Response
+from rest_framework import status
 from .models import Product,Order
 from .serializers import ProductSerializer, OrderSerializer, CreateOrderSerializer
 from .serializers import AdminOrderSerializer
@@ -113,3 +118,39 @@ class AdminProductDetailView(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAdminUser]
     serializer_class = ProductSerializer
     queryset = Product.objects.all()
+
+
+class CloudinaryUploadView(APIView):
+    """
+    POST /api/upload/
+    Accepts a multipart image file, uploads it to Cloudinary using server-side credentials,
+    and returns the secure CDN URL.
+    Protected by a shared secret header: X-Upload-Secret.
+    """
+    permission_classes = [AllowAny]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        import os
+        secret = os.environ.get('UPLOAD_SECRET', '')
+        if secret and request.headers.get('X-Upload-Secret') != secret:
+            return Response({'error': 'Unauthorized.'}, status=status.HTTP_403_FORBIDDEN)
+
+        file = request.FILES.get('file')
+        if not file:
+            return Response({'error': 'No file provided.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        cfg = settings.CLOUDINARY_STORAGE
+        cloudinary.config(
+            cloud_name=cfg.get('CLOUD_NAME'),
+            api_key=cfg.get('API_KEY'),
+            api_secret=cfg.get('API_SECRET'),
+            secure=True,
+        )
+
+        result = cloudinary.uploader.upload(
+            file,
+            folder='br-fresh-extracts',
+            resource_type='image',
+        )
+        return Response({'url': result['secure_url']}, status=status.HTTP_200_OK)

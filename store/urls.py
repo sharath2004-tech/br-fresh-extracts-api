@@ -11,4 +11,6 @@ urlpatterns = [
     
     path('admin/products/', views.AdminProductListCreateView.as_view(), name='admin-products-list-create'),
     path('admin/products/<int:pk>/', views.AdminProductDetailView.as_view(), name='admin-products-detail'),
+
+    path('upload/', views.CloudinaryUploadView.as_view(), name='cloudinary-upload'),
 ]
