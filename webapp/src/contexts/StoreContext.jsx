@@ -51,8 +51,17 @@ const defaultData = {
 const StoreContext = createContext(null);
 
 function load() {
-  try { const s = localStorage.getItem('so_store'); return s ? JSON.parse(s) : defaultData; }
-  catch { return defaultData; }
+  try {
+    const s = localStorage.getItem('so_store');
+    if (!s) return defaultData;
+    const stored = JSON.parse(s);
+    // Deep-merge so new top-level keys (e.g. settings) and new sub-keys are always present
+    return {
+      ...defaultData,
+      ...stored,
+      settings: { ...defaultData.settings, ...(stored.settings || {}) },
+    };
+  } catch { return defaultData; }
 }
 
 export function StoreProvider({ children }) {
