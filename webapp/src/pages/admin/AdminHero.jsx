@@ -1,5 +1,6 @@
 import { Eye, Save } from 'lucide-react';
 import { useState } from 'react';
+import ImageUpload from '../../components/ui/ImageUpload';
 import { useStore } from '../../contexts/StoreContext';
 
 export default function AdminHero() {
@@ -53,23 +54,9 @@ export default function AdminHero() {
         <div className="admin-card space-y-4">
           <h2 className="font-serif text-lg text-forest-700">Background Image</h2>
           <div>
-            <label className="label">Image URL</label>
-            <input type="url" className="input-field"
-              value={form.backgroundImage} onChange={e => set('backgroundImage', e.target.value)}
-              placeholder="https://images.unsplash.com/..." />
+            <label className="label">Background Image</label>
+            <ImageUpload value={form.backgroundImage} onChange={v => set('backgroundImage', v)} previewClass="h-44 w-full object-cover" />
           </div>
-          {form.backgroundImage && (
-            <div className="relative rounded-xl overflow-hidden h-44 border border-sand-200">
-              <img src={form.backgroundImage} alt="Hero preview"
-                className="w-full h-full object-cover"
-                onError={e => { e.target.style.display = 'none'; }} />
-              <div className="absolute inset-0 bg-gradient-to-b from-black/50 to-black/60 flex items-center justify-center">
-                <p className="font-serif text-cream text-xl text-center px-4 whitespace-pre-line leading-tight">
-                  {form.title || 'Your headline here'}
-                </p>
-              </div>
-            </div>
-          )}
         </div>
 
         <button type="submit"

@@ -1,5 +1,6 @@
 import { Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
+import ImageUpload from '../../components/ui/ImageUpload';
 import { useStore } from '../../contexts/StoreContext';
 
 const empty = { name: '', description: '', image: '', icon: '🌿' };
@@ -60,14 +61,9 @@ export default function AdminCategories() {
               <input type="text" className="input-field" value={form.description} onChange={e => set('description', e.target.value)} placeholder="Short description" />
             </div>
             <div className="md:col-span-2">
-              <label className="label">Image URL</label>
-              <input type="url" className="input-field" value={form.image} onChange={e => set('image', e.target.value)} placeholder="https://images.unsplash.com/..." />
+              <label className="label">Category Image</label>
+              <ImageUpload value={form.image} onChange={v => set('image', v)} previewClass="h-32 w-full object-cover" />
             </div>
-            {form.image && (
-              <div className="md:col-span-2">
-                <img src={form.image} alt="preview" className="h-32 w-full object-cover rounded-xl border border-sand-200" onError={e => { e.target.style.display='none'; }} />
-              </div>
-            )}
             <div className="md:col-span-2 flex gap-3">
               <button type="submit" className="btn-primary flex items-center gap-2 text-sm py-2.5">
                 <Save size={14} /> {editing ? 'Update' : 'Add Category'}
