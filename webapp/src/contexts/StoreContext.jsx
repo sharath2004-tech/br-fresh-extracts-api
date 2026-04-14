@@ -80,8 +80,13 @@ export function StoreProvider({ children }) {
   const update = (updater) => {
     setStore(prev => {
       const next = updater(prev);
-      localStorage.setItem('so_store', JSON.stringify(next));
-      return next;
+      try {
+        localStorage.setItem('so_store', JSON.stringify(next));
+      } catch {
+        // QuotaExceededError — in-memory state still updates; warn in console
+        console.warn('localStorage quota exceeded — changes saved in memory only until refresh.');
+      }
+      return next; // always update in-memory state regardless of storage failure
     });
   };
 
