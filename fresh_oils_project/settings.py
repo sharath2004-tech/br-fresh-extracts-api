@@ -192,6 +192,7 @@ CORS_ALLOW_ALL_METHODS = True
 CORS_ALLOW_HEADERS = [
     'authorization',
     'content-type',
+    'x-upload-secret',
 ]
 CSRF_TRUSTED_ORIGINS = [
     'https://br-fresh-extracts-api.onrender.com',
