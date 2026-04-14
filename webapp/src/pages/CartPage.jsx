@@ -109,7 +109,7 @@ export default function CartPage() {
                 </div>
               </div>
               <button
-                onClick={() => alert('Checkout coming soon! This is a demo.')}
+                onClick={() => navigate('/checkout')}
                 className="btn-primary w-full text-center mt-6 flex items-center justify-center gap-2">
                 Proceed to Checkout <ArrowRight size={15} />
               </button>

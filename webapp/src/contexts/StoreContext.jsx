@@ -1,6 +1,9 @@
 import { createContext, useContext, useState } from 'react';
 
 const defaultData = {
+  settings: {
+    whatsappNumber: '919999999999', // include country code, no +
+  },
   hero: {
     title: 'Pure from Nature,\nCrafted for You',
     subtitle: 'Discover the finest organic spices, teas, ghee & oils sourced directly from certified Indian farms — unprocessed, uncompromised.',
@@ -57,6 +60,9 @@ export function StoreProvider({ children }) {
   // Hero
   const updateHero = (patch) => update(p => ({ ...p, hero: { ...p.hero, ...patch } }));
 
+  // Settings
+  const updateSettings = (patch) => update(p => ({ ...p, settings: { ...p.settings, ...patch } }));
+
   // Categories
   const addCategory = (c)    => update(p => ({ ...p, categories: [...p.categories, { ...c, id: `cat_${Date.now()}` }] }));
   const updateCategory = (id, patch) => update(p => ({ ...p, categories: p.categories.map(c => c.id === id ? { ...c, ...patch } : c) }));
@@ -83,6 +89,7 @@ export function StoreProvider({ children }) {
     <StoreContext.Provider value={{
       store,
       updateHero,
+      updateSettings,
       addCategory, updateCategory, deleteCategory,
       addProduct,  updateProduct,  deleteProduct,
       addTestimonial, updateTestimonial, deleteTestimonial,

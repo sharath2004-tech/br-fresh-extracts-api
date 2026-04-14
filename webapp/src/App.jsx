@@ -5,6 +5,7 @@ import { StoreProvider } from './contexts/StoreContext';
 
 import MainLayout from './components/layout/MainLayout';
 import CartPage from './pages/CartPage';
+import CheckoutPage from './pages/CheckoutPage';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import ShopPage from './pages/ShopPage';
@@ -29,6 +30,7 @@ export default function App() {
                 <Route index element={<HomePage />} />
                 <Route path="shop" element={<ShopPage />} />
                 <Route path="cart" element={<CartPage />} />
+                <Route path="checkout" element={<CheckoutPage />} />
                 <Route path="login" element={<LoginPage />} />
               </Route>
 
