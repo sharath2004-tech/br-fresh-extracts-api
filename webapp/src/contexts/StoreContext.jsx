@@ -2,9 +2,9 @@ import { createContext, useContext, useState } from 'react';
 
 const defaultData = {
   settings: {
-    whatsappNumber: '919999999999',
-    phone: '+91 99999 99999',
-    email: 'hello@brfreshextracts.in',
+    whatsappNumber: '916305352434',
+    phone: '+91 6305352434',
+    email: 'brfreshextracts@gmail.com',
     upiId: 'brfreshextracts@upi',
     address: 'New Delhi, India',
     fssai: '10019012000123',
@@ -56,11 +56,16 @@ function load() {
     if (!s) return defaultData;
     const stored = JSON.parse(s);
     // Deep-merge so new top-level keys (e.g. settings) and new sub-keys are always present
-    return {
+    const merged = {
       ...defaultData,
       ...stored,
       settings: { ...defaultData.settings, ...(stored.settings || {}) },
     };
+    // Replace old placeholder values with real defaults
+    if (merged.settings.whatsappNumber === '919999999999') merged.settings.whatsappNumber = defaultData.settings.whatsappNumber;
+    if (merged.settings.phone === '+91 99999 99999') merged.settings.phone = defaultData.settings.phone;
+    if (merged.settings.email === 'hello@brfreshextracts.in') merged.settings.email = defaultData.settings.email;
+    return merged;
   } catch { return defaultData; }
 }
 
