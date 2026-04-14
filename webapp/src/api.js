@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-// ENSURE THIS IS YOUR LIVE RENDER URL
-const API_URL = 'https://br-fresh-extracts-api.onrender.com/api/';
+const API_URL = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/').replace(/\/?$/, '/');
 
 const api = axios.create({
   baseURL: API_URL,
