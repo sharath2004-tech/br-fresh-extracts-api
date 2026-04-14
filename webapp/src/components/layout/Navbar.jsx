@@ -39,7 +39,7 @@ export default function Navbar() {
         <Link to="/" className="flex items-center gap-2 shrink-0">
           <Leaf className="text-terra-500" size={22} strokeWidth={1.5} />
           <span className={`font-serif text-xl md:text-2xl font-semibold tracking-wide transition-colors ${scrolled ? 'text-forest-700' : 'text-cream'}`}>
-            Siddhi Organics
+            BR Fresh Extracts
           </span>
         </Link>
 

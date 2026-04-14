@@ -41,7 +41,7 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&q=80')] bg-cover bg-center opacity-20" />
         <div className="relative z-10 text-center">
           <Leaf className="text-terra-300 mx-auto mb-6" size={40} />
-          <h2 className="font-serif text-4xl text-cream font-light mb-4">Siddhi Organics</h2>
+          <h2 className="font-serif text-4xl text-cream font-light mb-4">BR Fresh Extracts</h2>
           <p className="text-cream/60 text-sm leading-relaxed max-w-xs">
             Pure from Nature, Crafted for You — join our community of conscious living.
           </p>
@@ -60,13 +60,13 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           <div className="mb-8 text-center lg:text-left">
             <Link to="/" className="inline-flex items-center gap-1.5 text-terra-500 text-sm mb-6 lg:hidden">
-              <Leaf size={15} /> Siddhi Organics
+              <Leaf size={15} /> BR Fresh Extracts
             </Link>
             <h1 className="font-serif text-3xl text-forest-700 mb-2">
               {isLogin ? 'Welcome back' : 'Create an account'}
             </h1>
             <p className="text-warm-brown/60 text-sm">
-              {isLogin ? 'Sign in to your account' : 'Join the Siddhi Organics community'}
+              {isLogin ? 'Sign in to your account' : 'Join the BR Fresh Extracts community'}
             </p>
           </div>
 

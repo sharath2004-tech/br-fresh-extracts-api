@@ -15,7 +15,7 @@ export default function WhyChooseUs() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-6">
         <AnimatedSection className="text-center mb-14">
-          <p className="text-terra-300 tracking-[0.25em] text-xs uppercase font-sans mb-3">Why Siddhi?</p>
+          <p className="text-terra-300 tracking-[0.25em] text-xs uppercase font-sans mb-3">Why BR Fresh?</p>
           <h2 className="font-serif text-4xl md:text-5xl text-cream font-light leading-tight">
             Our Promise to You
           </h2>

@@ -16,7 +16,7 @@ export default function Footer() {
         <div className="md:col-span-2">
           <div className="flex items-center gap-2 mb-4">
             <Leaf className="text-terra-400" size={20} />
-            <span className="font-serif text-2xl text-cream font-semibold">Siddhi Organics</span>
+            <span className="font-serif text-2xl text-cream font-semibold">BR Fresh Extracts</span>
           </div>
           <p className="text-cream/60 text-sm leading-relaxed max-w-xs">
             Pure, certified organic products sourced directly from Indian farms. No compromise on quality, no compromise on nature.
@@ -56,9 +56,9 @@ export default function Footer() {
               </a>
             </li>
             <li>
-              <a href="mailto:hello@siddhiorganics.in"
+              <a href="mailto:hello@brfreshextracts.in"
                 className="flex items-center gap-2 hover:text-terra-400 transition-colors">
-                <Mail size={15} /> hello@siddhiorganics.in
+                <Mail size={15} /> hello@brfreshextracts.in
               </a>
             </li>
           </ul>
@@ -70,7 +70,7 @@ export default function Footer() {
       </div>
 
       <div className="border-t border-forest-700 text-center py-5 text-xs text-cream/30 tracking-wide">
-        © {new Date().getFullYear()} Siddhi Organics. All rights reserved. &nbsp;•&nbsp; Made with 🌿 in India
+        © {new Date().getFullYear()} BR Fresh Extracts. All rights reserved. &nbsp;•&nbsp; Made with 🌿 in India
       </div>
     </footer>
   );

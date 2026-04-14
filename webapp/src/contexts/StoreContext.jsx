@@ -26,7 +26,7 @@ const defaultData = {
   testimonials: [
     { id: 't1', name: 'Priya Sharma', location: 'Mumbai', rating: 5, review: 'The saffron is absolutely divine! You can smell the difference from the very first pinch. Will never go back to regular grocery store saffron again.', avatar: 'PS' },
     { id: 't2', name: 'Rahul Verma', location: 'Bangalore', rating: 5, review: 'The A2 ghee tastes exactly like what my grandmother used to make. Unmatched quality and delivery was super fast. Highly recommended!', avatar: 'RV' },
-    { id: 't3', name: 'Anjali Gupta', location: 'New Delhi', rating: 5, review: 'Switched to Siddhi Organics 3 months ago and the difference in energy and digestion is very noticeable. Love every single product I\'ve ordered!', avatar: 'AG' },
+    { id: 't3', name: 'Anjali Gupta', location: 'New Delhi', rating: 5, review: 'Switched to BR Fresh Extracts 3 months ago and the difference in energy and digestion is very noticeable. Love every single product I\'ve ordered!', avatar: 'AG' },
   ],
   whyUs: [
     { id: 'w1', title: 'No Artificial Flavours', description: '100% natural with zero additives, colours or preservatives in any of our products.', icon: 'leaf' },

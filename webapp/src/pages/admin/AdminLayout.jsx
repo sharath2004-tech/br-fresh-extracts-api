@@ -38,7 +38,7 @@ export default function AdminLayout() {
       <div className="px-6 py-5 border-b border-sand-100 flex items-center gap-2">
         <Leaf className="text-terra-500" size={18} />
         <div>
-          <p className="font-serif text-base text-forest-700 font-semibold">Siddhi Organics</p>
+          <p className="font-serif text-base text-forest-700 font-semibold">BR Fresh Extracts</p>
           <p className="text-xs text-warm-brown/50">Admin Panel</p>
         </div>
       </div>
@@ -109,7 +109,7 @@ export default function AdminLayout() {
             <Menu size={20} className="text-warm-brown" />
           </button>
           <h1 className="font-sans text-sm font-medium text-warm-brown/60">
-            Admin <span className="text-terra-500">›</span> Siddhi Organics
+            Admin <span className="text-terra-500">›</span> BR Fresh Extracts
           </h1>
           <div className="ml-auto flex items-center gap-2">
             <NavLink to="/" className="text-xs text-warm-brown/50 hover:text-terra-500 transition-colors">
