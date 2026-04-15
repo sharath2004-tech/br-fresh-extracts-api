@@ -10,9 +10,18 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny,IsAdminUser
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Product,Order
-from .serializers import ProductSerializer, OrderSerializer, CreateOrderSerializer
+from .models import Product, Order, Category
+from .serializers import ProductSerializer, OrderSerializer, CreateOrderSerializer, CategorySerializer
 from .serializers import AdminOrderSerializer
+import os
+
+
+def _check_secret(request):
+    """Returns True if the request carries the correct X-Upload-Secret header (or no secret is configured)."""
+    secret = os.environ.get('UPLOAD_SECRET', '')
+    if not secret:
+        return True
+    return request.headers.get('X-Upload-Secret') == secret
 
 class ProductListView(ListAPIView):
     """
@@ -100,24 +109,128 @@ class AdminOrderUpdateView(RetrieveUpdateAPIView):
 
 # --- 2. ADMIN PRODUCT MANAGEMENT (CRUD) ---
 
-class AdminProductListCreateView(ListCreateAPIView):
-    """
-    GET: List all products (for admin table)
-    POST: Create a new product
-    """
-    permission_classes = [IsAdminUser]
-    serializer_class = ProductSerializer
-    queryset = Product.objects.all().order_by('-created_at')
+# --- CATEGORY VIEWS ---
 
-class AdminProductDetailView(RetrieveUpdateDestroyAPIView):
-    """
-    GET: Fetch one product
-    PUT/PATCH: Update product
-    DELETE: Delete product
-    """
-    permission_classes = [IsAdminUser]
-    serializer_class = ProductSerializer
-    queryset = Product.objects.all()
+class CategoryListView(ListAPIView):
+    """Public category list — used by the customer-facing site."""
+    permission_classes = [AllowAny]
+    serializer_class = CategorySerializer
+    queryset = Category.objects.all()
+
+
+class AdminCategoryListCreateView(APIView):
+    """Admin: list all categories (GET) or create one (POST)."""
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        if not _check_secret(request):
+            return Response({'error': 'Unauthorized.'}, status=status.HTTP_403_FORBIDDEN)
+        serializer = CategorySerializer(Category.objects.all(), many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        if not _check_secret(request):
+            return Response({'error': 'Unauthorized.'}, status=status.HTTP_403_FORBIDDEN)
+        serializer = CategorySerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminCategoryDetailView(APIView):
+    """Admin: update (PUT) or delete (DELETE) a single category."""
+    permission_classes = [AllowAny]
+
+    def get_object(self, pk):
+        try:
+            return Category.objects.get(pk=pk)
+        except Category.DoesNotExist:
+            return None
+
+    def put(self, request, pk):
+        if not _check_secret(request):
+            return Response({'error': 'Unauthorized.'}, status=status.HTTP_403_FORBIDDEN)
+        obj = self.get_object(pk)
+        if obj is None:
+            return Response({'error': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = CategorySerializer(obj, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        if not _check_secret(request):
+            return Response({'error': 'Unauthorized.'}, status=status.HTTP_403_FORBIDDEN)
+        obj = self.get_object(pk)
+        if obj is None:
+            return Response({'error': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# --- ADMIN PRODUCT VIEWS ---
+
+class AdminProductListCreateView(APIView):
+    """Admin: list all products (GET) or create one (POST)."""
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        if not _check_secret(request):
+            return Response({'error': 'Unauthorized.'}, status=status.HTTP_403_FORBIDDEN)
+        serializer = ProductSerializer(Product.objects.all().order_by('-created_at'), many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        if not _check_secret(request):
+            return Response({'error': 'Unauthorized.'}, status=status.HTTP_403_FORBIDDEN)
+        serializer = ProductSerializer(data=request.data)
+        if serializer.is_valid():
+            category_obj = None
+            category_name = request.data.get('category', '')
+            if category_name:
+                category_obj, _ = Category.objects.get_or_create(name=category_name)
+            instance = serializer.save(category=category_obj)
+            return Response(ProductSerializer(instance).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminProductDetailView(APIView):
+    """Admin: update (PUT) or delete (DELETE) a single product."""
+    permission_classes = [AllowAny]
+
+    def get_object(self, pk):
+        try:
+            return Product.objects.get(pk=pk)
+        except Product.DoesNotExist:
+            return None
+
+    def put(self, request, pk):
+        if not _check_secret(request):
+            return Response({'error': 'Unauthorized.'}, status=status.HTTP_403_FORBIDDEN)
+        obj = self.get_object(pk)
+        if obj is None:
+            return Response({'error': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = ProductSerializer(obj, data=request.data, partial=True)
+        if serializer.is_valid():
+            category_name = request.data.get('category', '')
+            if category_name:
+                category_obj, _ = Category.objects.get_or_create(name=category_name)
+                instance = serializer.save(category=category_obj)
+            else:
+                instance = serializer.save()
+            return Response(ProductSerializer(instance).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        if not _check_secret(request):
+            return Response({'error': 'Unauthorized.'}, status=status.HTTP_403_FORBIDDEN)
+        obj = self.get_object(pk)
+        if obj is None:
+            return Response({'error': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CloudinaryUploadView(APIView):

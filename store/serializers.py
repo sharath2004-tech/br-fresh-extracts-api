@@ -1,11 +1,19 @@
 from rest_framework import serializers
-from .models import Product,Order, OrderItem,Category
+from .models import Product, Order, OrderItem, Category
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ['id', 'name', 'description', 'image', 'icon']
+
 
 class ProductSerializer(serializers.ModelSerializer):
     category = serializers.StringRelatedField()
+
     class Meta:
         model = Product
-        fields = ['id', 'name', 'description', 'category', 'price', 'image', 'in_stock'] # 'image', not 'image_url'
+        fields = ['id', 'name', 'description', 'category', 'price', 'image', 'in_stock', 'featured', 'weight', 'variants']
     
 class OrderItemSerializer(serializers.ModelSerializer):
     """

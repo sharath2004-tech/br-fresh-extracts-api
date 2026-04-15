@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 
 const defaultData = {
   settings: {
@@ -53,6 +53,9 @@ const defaultData = {
 
 const StoreContext = createContext(null);
 
+const _rawApi = import.meta.env.VITE_API_URL || '/api/';
+const API_URL = _rawApi.endsWith('/') ? _rawApi : _rawApi + '/';
+
 function load() {
   try {
     const s = localStorage.getItem('so_store');
@@ -76,6 +79,37 @@ function load() {
 
 export function StoreProvider({ children }) {
   const [store, setStore] = useState(load);
+
+  // Fetch categories and products from the live API and merge them in
+  useEffect(() => {
+    Promise.all([
+      fetch(`${API_URL}categories/`).then(r => r.ok ? r.json() : []),
+      fetch(`${API_URL}products/`).then(r => r.ok ? r.json() : []),
+    ]).then(([cats, prods]) => {
+      setStore(prev => ({
+        ...prev,
+        categories: cats.length ? cats.map(c => ({
+          id: String(c.id),
+          name: c.name,
+          description: c.description || '',
+          image: c.image || '',
+          icon: c.icon || '🌿',
+        })) : prev.categories,
+        products: prods.length ? prods.map(p => ({
+          id: String(p.id),
+          name: p.name,
+          description: p.description || '',
+          category: p.category || '',
+          price: Number(p.price),
+          weight: p.weight || '',
+          image: p.image || '',
+          in_stock: p.in_stock,
+          featured: p.featured || false,
+          variants: p.variants && p.variants.length ? p.variants : [{ size: p.weight || '', price: Number(p.price) }],
+        })) : prev.products,
+      }));
+    }).catch(() => {/* keep defaults on network failure */});
+  }, []);
 
   const update = (updater) => {
     setStore(prev => {

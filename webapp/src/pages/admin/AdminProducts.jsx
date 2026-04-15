@@ -1,16 +1,38 @@
 import { Pencil, Plus, Save, Star, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import ImageUpload from '../../components/ui/ImageUpload';
-import { useStore } from '../../contexts/StoreContext';
+
+const _raw = import.meta.env.VITE_API_URL || '/api/';
+const API_URL = _raw.endsWith('/') ? _raw : _raw + '/';
+const SECRET = import.meta.env.VITE_UPLOAD_SECRET || '';
+
+function apiHeaders(json = true) {
+  const h = {};
+  if (SECRET) h['X-Upload-Secret'] = SECRET;
+  if (json) h['Content-Type'] = 'application/json';
+  return h;
+}
 
 const empty = { name: '', category: '', price: '', weight: '', image: '', description: '', featured: false, variants: [{ size: '', price: '' }] };
 
 export default function AdminProducts() {
-  const { store, addProduct, updateProduct, deleteProduct } = useStore();
-  const [form, setForm]       = useState(empty);
+  const [products, setProducts]   = useState([]);
+  const [apiCategories, setApiCategories] = useState([]);
+  const [form, setForm]           = useState(empty);
   const [editing, setEditing] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [filterCat, setFilterCat] = useState('All');
+  const [saving, setSaving] = useState(false);
+
+  const fetchProducts = () =>
+    fetch(`${API_URL}admin/products/`, { headers: apiHeaders(false) })
+      .then(r => r.json()).then(setProducts).catch(() => {});
+
+  const fetchCategories = () =>
+    fetch(`${API_URL}categories/`)
+      .then(r => r.json()).then(setApiCategories).catch(() => {});
+
+  useEffect(() => { fetchProducts(); fetchCategories(); }, []);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -24,27 +46,35 @@ export default function AdminProducts() {
   const openAdd  = () => { setForm(empty); setEditing(null); setShowForm(true); };
   const openEdit = (p) => {
     const variants = (p.variants && p.variants.length) ? p.variants.map(v => ({ size: v.size, price: String(v.price) })) : [{ size: p.weight, price: String(p.price) }];
-    setForm({ name: p.name, category: p.category, price: String(p.price), weight: p.weight, image: p.image, description: p.description, featured: p.featured, variants });
+    setForm({ name: p.name, category: p.category, price: String(p.price), weight: p.weight || '', image: p.image || '', description: p.description, featured: p.featured, variants });
     setEditing(p.id); setShowForm(true);
   };
   const cancel = () => { setShowForm(false); setEditing(null); };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    const variants = form.variants.filter(v => v.size && v.price).map(v => ({ size: v.size, price: Number(v.price) }));
-    const firstVariant = variants[0] || { size: form.weight, price: Number(form.price) };
-    const data = { ...form, price: firstVariant.price, weight: firstVariant.size, variants };
-    if (editing) updateProduct(editing, data);
-    else addProduct(data);
-    cancel();
+    setSaving(true);
+    try {
+      const variants = form.variants.filter(v => v.size && v.price).map(v => ({ size: v.size, price: Number(v.price) }));
+      const firstVariant = variants[0] || { size: form.weight, price: Number(form.price) };
+      const payload = { ...form, price: firstVariant.price, weight: firstVariant.size, variants };
+      const url    = editing ? `${API_URL}admin/products/${editing}/` : `${API_URL}admin/products/`;
+      const method = editing ? 'PUT' : 'POST';
+      const res = await fetch(url, { method, headers: apiHeaders(), body: JSON.stringify(payload) });
+      if (res.ok) { fetchProducts(); cancel(); }
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDelete = (id, name) => {
-    if (window.confirm(`Delete "${name}"?`)) deleteProduct(id);
+  const handleDelete = async (id, name) => {
+    if (!window.confirm(`Delete "${name}"?`)) return;
+    await fetch(`${API_URL}admin/products/${id}/`, { method: 'DELETE', headers: apiHeaders(false) });
+    fetchProducts();
   };
 
-  const categories = ['All', ...store.categories.map(c => c.name)];
-  const filtered = filterCat === 'All' ? store.products : store.products.filter(p => p.category === filterCat);
+  const categories = ['All', ...apiCategories.map(c => c.name)];
+  const filtered = filterCat === 'All' ? products : products.filter(p => p.category === filterCat);
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -74,7 +104,7 @@ export default function AdminProducts() {
               <label className="label">Category</label>
               <select required className="input-field bg-white" value={form.category} onChange={e => set('category', e.target.value)}>
                 <option value="">Select category</option>
-                {store.categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                {apiCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
             </div>
             <div className="md:col-span-2">
@@ -114,7 +144,7 @@ export default function AdminProducts() {
               </label>
             </div>
             <div className="md:col-span-2 flex gap-3">
-              <button type="submit" className="btn-primary flex items-center gap-2 text-sm py-2.5">
+              <button type="submit" disabled={saving} className="btn-primary flex items-center gap-2 text-sm py-2.5">
                 <Save size={14} /> {editing ? 'Update' : 'Add Product'}
               </button>
               <button type="button" onClick={cancel} className="btn-secondary text-sm py-2.5">Cancel</button>
