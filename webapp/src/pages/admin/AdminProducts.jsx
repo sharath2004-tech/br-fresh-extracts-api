@@ -1,5 +1,5 @@
 import { Pencil, Plus, Save, Star, Trash2, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import ImageUpload from '../../components/ui/ImageUpload';
 
 const _raw = import.meta.env.VITE_API_URL || '/api/';
