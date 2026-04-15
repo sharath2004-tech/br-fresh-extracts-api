@@ -214,5 +214,4 @@ export default function AdminCategories() {
         ))}
       </div>
     </div>
-  );
-}
+);
