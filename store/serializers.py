@@ -3,7 +3,7 @@ from .models import Product, Order, OrderItem, Category
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    image = serializers.URLField(max_length=2000, allow_blank=True, required=False)
+    image = serializers.URLField(max_length=2000, allow_blank=True, allow_null=True, required=False)
 
     class Meta:
         model = Category
@@ -12,7 +12,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     category = serializers.StringRelatedField()
-    image = serializers.URLField(max_length=2000, allow_blank=True, required=False)
+    image = serializers.URLField(max_length=2000, allow_blank=True, allow_null=True, required=False)
 
     class Meta:
         model = Product
