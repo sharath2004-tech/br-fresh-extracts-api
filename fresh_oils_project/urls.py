@@ -16,8 +16,39 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path,include
+from django.http import JsonResponse
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+import traceback
+
+def health_check(request):
+    """Diagnostic endpoint to check DB connectivity."""
+    checks = {}
+    try:
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        checks['db'] = 'ok'
+    except Exception as e:
+        checks['db'] = f'error: {e}'
+    try:
+        from store.models import Product, Category
+        checks['product_count'] = Product.objects.count()
+        checks['category_count'] = Category.objects.count()
+    except Exception as e:
+        checks['query_error'] = traceback.format_exc()
+    try:
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name"
+            )
+            checks['tables'] = [row[0] for row in cursor.fetchall()]
+    except Exception as e:
+        checks['tables_error'] = str(e)
+    return JsonResponse(checks)
+
 urlpatterns = [
+    path('health/', health_check, name='health-check'),
     path('admin/', admin.site.urls),
     path('api/', include('store.urls')),
     path('api/auth/', include('accounts.urls')),
