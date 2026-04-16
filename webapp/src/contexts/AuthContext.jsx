@@ -122,7 +122,8 @@ export function AuthProvider({ children }) {
       setConfirmationResult(result);
       return { success: true };
     } catch (err) {
-      return { success: false, error: friendlyAuthError(err, 'Failed to send OTP. Please try again.') };
+      console.error('[sendOtp] Firebase error code:', err?.code, '| message:', err?.message);
+      return { success: false, error: friendlyAuthError(err, `Failed to send OTP. (${err?.code || 'unknown'})`) };
     }
   };
 
