@@ -12,8 +12,10 @@ import ShopPage from './pages/ShopPage';
 
 import AdminCategories from './pages/admin/AdminCategories';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminExpenses from './pages/admin/AdminExpenses';
 import AdminHero from './pages/admin/AdminHero';
 import AdminLayout from './pages/admin/AdminLayout';
+import AdminOrders from './pages/admin/AdminOrders';
 import AdminProducts from './pages/admin/AdminProducts';
 import AdminSettings from './pages/admin/AdminSettings';
 import AdminTestimonials from './pages/admin/AdminTestimonials';
@@ -38,6 +40,8 @@ export default function App() {
               {/* Admin routes — own layout, no main navbar */}
               <Route path="admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
+                <Route path="orders"       element={<AdminOrders />} />
+                <Route path="expenses"     element={<AdminExpenses />} />
                 <Route path="hero"         element={<AdminHero />} />
                 <Route path="categories"   element={<AdminCategories />} />
                 <Route path="products"     element={<AdminProducts />} />

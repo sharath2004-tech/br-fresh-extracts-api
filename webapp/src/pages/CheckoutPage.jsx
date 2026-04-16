@@ -1,14 +1,50 @@
-import { Camera, Loader2, MapPin, Navigation, ShoppingBag } from 'lucide-react';
+import { Camera, CheckCircle, CreditCard, Loader2, MapPin, Navigation, ShoppingBag, Truck } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AnimatedSection from '../components/ui/AnimatedSection';
 import { useCart } from '../contexts/CartContext';
 import { useStore } from '../contexts/StoreContext';
 
+const _rawApi = import.meta.env.VITE_API_URL || '/api/';
+const API_URL = _rawApi.endsWith('/') ? _rawApi : _rawApi + '/';
+const UPLOAD_SECRET = import.meta.env.VITE_UPLOAD_SECRET || '';
+
 const emptyForm = {
   name: '', phone: '', email: '',
   address: '', city: '', state: '', pincode: '',
 };
+
+async function uploadProofToBackend(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const headers = {};
+  if (UPLOAD_SECRET) headers['X-Upload-Secret'] = UPLOAD_SECRET;
+  const res = await fetch(`${API_URL}upload/`, { method: 'POST', headers, body: fd });
+  if (!res.ok) throw new Error('Backend upload failed');
+  const data = await res.json();
+  return data.url;
+}
+
+function compressFileToBase64(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 800;
+        let { width, height } = img;
+        if (width > MAX) { height = Math.round(height * MAX / width); width = MAX; }
+        if (height > MAX) { width = Math.round(width * MAX / height); height = MAX; }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.72));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function CheckoutPage() {
   const { items, total, clearCart, cartKey } = useCart();
@@ -19,6 +55,7 @@ export default function CheckoutPage() {
   const [location, setLocation] = useState(null); // { lat, lng, label }
   const [locLoading, setLocLoading] = useState(false);
   const [locError, setLocError] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('UPI'); // 'UPI' | 'COD'
   const [paymentFile, setPaymentFile] = useState(null);
   const [paymentPreview, setPaymentPreview] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -79,18 +116,65 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!paymentFile) { alert('Please upload your payment screenshot to continue.'); return; }
+    if (paymentMethod === 'UPI' && !paymentFile) {
+      alert('Please upload your UPI payment screenshot to continue.');
+      return;
+    }
     setSubmitting(true);
 
     const whatsapp = (store.settings?.whatsappNumber || '916305352434').replace(/\D/g, '');
     const mapsLink = location ? `https://maps.google.com/?q=${location.lat},${location.lng}` : '';
+    const orderId = `ORD-${Date.now()}`;
 
+    // Upload UPI proof if needed
+    let proofUrl = null;
+    if (paymentMethod === 'UPI' && paymentFile) {
+      try {
+        proofUrl = await uploadProofToBackend(paymentFile);
+      } catch {
+        // Fall back: compress + store base64 in localStorage keyed by orderId
+        try {
+          const b64 = await compressFileToBase64(paymentFile);
+          localStorage.setItem(`so_proof_${orderId}`, b64);
+          proofUrl = `__local__${orderId}`;
+        } catch { proofUrl = null; }
+      }
+    }
+
+    // Save order to localStorage
+    const order = {
+      id: orderId,
+      date: new Date().toISOString(),
+      customer: {
+        name: form.name, phone: form.phone, email: form.email,
+        address: form.address, city: form.city, state: form.state, pincode: form.pincode,
+        lat: location?.lat || null, lng: location?.lng || null,
+      },
+      items: items.map(i => ({ name: i.name, weight: i.weight, qty: i.qty, price: i.price })),
+      subtotal: total,
+      shipping,
+      total: grandTotal,
+      paymentMethod,
+      paymentProofUrl: proofUrl,
+      status: 'Pending',
+      notes: '',
+    };
+    try {
+      const existing = JSON.parse(localStorage.getItem('so_orders') || '[]');
+      existing.unshift(order);
+      localStorage.setItem('so_orders', JSON.stringify(existing));
+    } catch { /* quota issue — order still continues */ }
+
+    // Build WhatsApp notification message
     const orderLines = items.map(item =>
       `• ${item.name} (${item.weight}) × ${item.qty} — ₹${(item.price * item.qty).toLocaleString()}`
     ).join('\n');
 
     const msg = [
-      '🛒 *New Order — BR Fresh Extracts*',
+      paymentMethod === 'COD'
+        ? '🛒 *New COD Order — BR Fresh Extracts*'
+        : '🛒 *New UPI Order — BR Fresh Extracts*',
+      `*Order ID:* ${orderId}`,
       '',
       `*Name:* ${form.name}`,
       `*Phone:* ${form.phone}`,
@@ -109,33 +193,37 @@ export default function CheckoutPage() {
       shippingMode === 'discuss' ? '📦 Shipping charges will be confirmed before dispatch.' : null,
       `*Grand Total:* ₹${grandTotal.toLocaleString()}`,
       '',
-      '📎 Payment screenshot attached below.',
+      paymentMethod === 'COD'
+        ? '🚚 *Payment: Cash on Delivery* — Please call customer to confirm order.'
+        : '💳 *Payment: UPI* — Payment screenshot attached. Please verify and approve.',
     ].filter(l => l !== null).join('\n');
 
-    // Try Web Share API first (works on Android/mobile — shares file + text to WhatsApp)
-    const canShareFile = navigator.canShare && navigator.canShare({ files: [paymentFile] });
-    if (canShareFile) {
-      try {
-        await navigator.share({ files: [paymentFile], text: msg });
-        clearCart();
-        navigate('/');
-        setSubmitting(false);
-        return;
-      } catch (err) {
-        // User cancelled share or error — fall through to wa.me
-        if (err.name === 'AbortError') { setSubmitting(false); return; }
+    if (paymentMethod === 'UPI' && paymentFile) {
+      // Try Web Share API (shares file + text to WhatsApp on mobile)
+      const canShareFile = navigator.canShare && navigator.canShare({ files: [paymentFile] });
+      if (canShareFile) {
+        try {
+          await navigator.share({ files: [paymentFile], text: msg });
+          clearCart();
+          navigate('/');
+          setSubmitting(false);
+          return;
+        } catch (err) {
+          if (err.name === 'AbortError') { setSubmitting(false); return; }
+        }
       }
+      // Fallback: text link + auto-download screenshot
+      window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
+      if (paymentPreview) {
+        const dlLink = document.createElement('a');
+        dlLink.href = paymentPreview;
+        dlLink.download = `payment-${orderId}.jpg`;
+        dlLink.click();
+      }
+    } else {
+      // COD: just send text to WhatsApp
+      window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
     }
-
-    // Fallback: open wa.me text link, then trigger screenshot download so user can attach it manually
-    const waUrl = `https://wa.me/${whatsapp}?text=${encodeURIComponent(msg)}`;
-    window.open(waUrl, '_blank');
-
-    // Auto-download the screenshot so user can easily attach it in WhatsApp
-    const dlLink = document.createElement('a');
-    dlLink.href = paymentPreview;
-    dlLink.download = `payment-${Date.now()}.jpg`;
-    dlLink.click();
 
     clearCart();
     navigate('/');
@@ -239,30 +327,74 @@ export default function CheckoutPage() {
                 </div>
               </AnimatedSection>
 
-              {/* Payment Screenshot */}
+              {/* Payment Method */}
               <AnimatedSection delay={120}>
                 <div className="bg-white rounded-2xl border border-sand-200 p-6 shadow-sm">
-                  <h2 className="font-serif text-xl text-forest-700 mb-2">Payment Screenshot</h2>
-                  <p className="text-xs text-warm-brown/60 mb-5">
-                    Pay to our UPI ID: <span className="font-medium text-forest-700">{store.settings?.upiId}</span> &nbsp;|&nbsp; Amount: <span className="font-semibold text-terra-500">₹{grandTotal.toLocaleString()}</span>
-                    <br />Then upload the screenshot below for confirmation.
-                  </p>
-                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
-                  {paymentPreview ? (
-                    <div className="relative w-fit">
-                      <img src={paymentPreview} alt="Payment screenshot" className="max-h-52 rounded-xl border border-sand-200 object-contain" />
-                      <button type="button" onClick={() => { setPaymentFile(null); setPaymentPreview(null); fileRef.current.value = ''; }}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600">
-                        ×
-                      </button>
+                  <h2 className="font-serif text-xl text-forest-700 mb-5">Payment Method</h2>
+                  <div className="grid grid-cols-2 gap-3 mb-6">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('UPI')}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                        paymentMethod === 'UPI'
+                          ? 'border-terra-400 bg-terra-50 text-terra-600'
+                          : 'border-sand-200 bg-white text-warm-brown/60 hover:border-sand-300'
+                      }`}
+                    >
+                      <CreditCard size={22} />
+                      <span className="text-sm font-semibold">UPI Payment</span>
+                      <span className="text-xs text-center leading-tight opacity-70">Pay now via UPI & upload screenshot</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('COD')}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                        paymentMethod === 'COD'
+                          ? 'border-forest-500 bg-forest-50 text-forest-600'
+                          : 'border-sand-200 bg-white text-warm-brown/60 hover:border-sand-300'
+                      }`}
+                    >
+                      <Truck size={22} />
+                      <span className="text-sm font-semibold">Cash on Delivery</span>
+                      <span className="text-xs text-center leading-tight opacity-70">Pay cash when order arrives</span>
+                    </button>
+                  </div>
+
+                  {paymentMethod === 'UPI' ? (
+                    <div>
+                      <p className="text-xs text-warm-brown/60 mb-4">
+                        Pay to our UPI ID: <span className="font-semibold text-forest-700">{store.settings?.upiId}</span>
+                        &nbsp;|&nbsp; Amount: <span className="font-semibold text-terra-500">₹{grandTotal.toLocaleString()}</span>
+                        <br />Then upload the payment screenshot below for confirmation.
+                      </p>
+                      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+                      {paymentPreview ? (
+                        <div className="relative w-fit">
+                          <img src={paymentPreview} alt="Payment screenshot" className="max-h-52 rounded-xl border border-sand-200 object-contain" />
+                          <button type="button" onClick={() => { setPaymentFile(null); setPaymentPreview(null); fileRef.current.value = ''; }}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600">
+                            ×
+                          </button>
+                        </div>
+                      ) : (
+                        <button type="button" onClick={() => fileRef.current.click()}
+                          className="border-2 border-dashed border-sand-300 hover:border-terra-400 rounded-xl p-8 w-full flex flex-col items-center gap-2 text-warm-brown/50 hover:text-terra-500 transition-all">
+                          <Camera size={28} strokeWidth={1.5} />
+                          <span className="text-sm font-medium">Upload Payment Screenshot</span>
+                          <span className="text-xs">JPG, PNG accepted</span>
+                        </button>
+                      )}
                     </div>
                   ) : (
-                    <button type="button" onClick={() => fileRef.current.click()}
-                      className="border-2 border-dashed border-sand-300 hover:border-terra-400 rounded-xl p-8 w-full flex flex-col items-center gap-2 text-warm-brown/50 hover:text-terra-500 transition-all">
-                      <Camera size={28} strokeWidth={1.5} />
-                      <span className="text-sm font-medium">Upload Payment Screenshot</span>
-                      <span className="text-xs">JPG, PNG accepted</span>
-                    </button>
+                    <div className="flex items-start gap-3 bg-forest-50 border border-forest-100 rounded-xl p-4">
+                      <CheckCircle size={18} className="text-forest-500 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-forest-700">Our agent will call you to confirm</p>
+                        <p className="text-xs text-warm-brown/60 mt-0.5">
+                          After placing the order, our team will call you on <span className="font-medium text-forest-700">{form.phone || 'your registered number'}</span> to confirm the order before dispatch. Please keep your phone reachable.
+                        </p>
+                      </div>
+                    </div>
                   )}
                 </div>
               </AnimatedSection>
@@ -308,11 +440,17 @@ export default function CheckoutPage() {
                   className="btn-primary w-full mt-6 flex items-center justify-center gap-2 disabled:opacity-70"
                 >
                   {submitting ? <Loader2 size={15} className="animate-spin" /> : (
-                    <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 22C6.486 22 2 17.514 2 12S6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>
+                    paymentMethod === 'COD'
+                      ? <Truck size={15} />
+                      : <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 22C6.486 22 2 17.514 2 12S6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>
                   )}
-                  Confirm Order on WhatsApp
+                  {submitting ? 'Placing Order…' : paymentMethod === 'COD' ? 'Place COD Order' : 'Confirm UPI Order on WhatsApp'}
                 </button>
-                <p className="text-xs text-center text-warm-brown/40 mt-3">Your order details + payment screenshot will be sent via WhatsApp.</p>
+                <p className="text-xs text-center text-warm-brown/40 mt-3">
+                  {paymentMethod === 'COD'
+                    ? 'Our agent will call you to confirm before dispatch.'
+                    : 'Your order + payment screenshot will be sent via WhatsApp.'}
+                </p>
                 <Link to="/cart" className="block text-center text-sm text-warm-brown/50 hover:text-terra-500 transition-colors mt-3">
                   ← Back to Cart
                 </Link>
