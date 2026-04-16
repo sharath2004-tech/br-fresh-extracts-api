@@ -34,3 +34,7 @@ services:
         sync: false
       - key: CORS_ALLOWED_ORIGINS
         sync: false
+      - key: TRANSLATE_API_URL
+        value: https://libretranslate.com/translate
+      - key: TRANSLATE_API_KEY
+        sync: false

@@ -30,6 +30,7 @@ import {
     listPublicProducts,
     updateProduct,
 } from '../controllers/productsController.js';
+import { translateText } from '../controllers/translateController.js';
 import { uploadImage } from '../controllers/uploadController.js';
 import { requireJwt } from '../middleware/requireJwt.js';
 import { requireSecret } from '../middleware/requireSecret.js';
@@ -74,5 +75,8 @@ router.put('/auth/profile/', requireJwt, profile);
 router.post('/auth/change-password/', requireJwt, changePassword);
 router.post('/auth/reset-password/', resetPassword);
 router.post('/auth/token/refresh/', refreshToken);
+
+// Translation
+router.post('/translate/', translateText);
 
 export default router;

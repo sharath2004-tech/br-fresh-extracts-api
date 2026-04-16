@@ -2,6 +2,7 @@ import { Eye, EyeOff, Leaf } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -10,6 +11,7 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login, register, user } = useAuth();
+  const { t, tr } = useLanguage();
   const navigate = useNavigate();
 
   if (user) { navigate('/'); return null; }
@@ -43,12 +45,12 @@ export default function LoginPage() {
           <Leaf className="text-terra-300 mx-auto mb-6" size={40} />
           <h2 className="font-serif text-4xl text-cream font-light mb-4">BR Fresh Extracts</h2>
           <p className="text-cream/60 text-sm leading-relaxed max-w-xs">
-            Pure from Nature, Crafted for You — join our community of conscious living.
+            {t('login.panelSubtitle')}
           </p>
           <div className="mt-10 space-y-3 text-left">
-            {['Access exclusive member offers', 'Track your orders', 'Get seasonal recipes & tips'].map(t => (
-              <div key={t} className="flex items-center gap-2 text-cream/70 text-xs">
-                <span className="w-1.5 h-1.5 rounded-full bg-terra-400 shrink-0" /> {t}
+            {[t('login.panelBullet1'), t('login.panelBullet2'), t('login.panelBullet3')].map(line => (
+              <div key={line} className="flex items-center gap-2 text-cream/70 text-xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-terra-400 shrink-0" /> {line}
               </div>
             ))}
           </div>
@@ -63,10 +65,10 @@ export default function LoginPage() {
               <Leaf size={15} /> BR Fresh Extracts
             </Link>
             <h1 className="font-serif text-3xl text-forest-700 mb-2">
-              {isLogin ? 'Welcome back' : 'Create an account'}
+              {isLogin ? t('login.welcome') : t('login.create')}
             </h1>
             <p className="text-warm-brown/60 text-sm">
-              {isLogin ? 'Sign in to your account' : 'Join the BR Fresh Extracts community'}
+              {isLogin ? t('login.signInSub') : t('login.signUpSub')}
             </p>
           </div>
 
@@ -75,18 +77,18 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <div>
-                <label className="label">Full Name</label>
+                <label className="label">{t('login.fullName')}</label>
                 <input className="input-field" type="text" placeholder="Your name" required
                   value={form.name} onChange={e => set('name', e.target.value)} />
               </div>
             )}
             <div>
-              <label className="label">Email</label>
+              <label className="label">{t('login.email')}</label>
               <input className="input-field" type="email" placeholder="you@example.com" required
                 value={form.email} onChange={e => set('email', e.target.value)} />
             </div>
             <div>
-              <label className="label">Password</label>
+              <label className="label">{t('login.password')}</label>
               <div className="relative">
                 <input className="input-field pr-10" type={showPass ? 'text' : 'password'} placeholder="••••••••" required
                   value={form.password} onChange={e => set('password', e.target.value)} />
@@ -97,21 +99,21 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {error && <p className="text-red-500 text-sm bg-red-50 px-4 py-2.5 rounded-lg">{error}</p>}
+            {error && <p className="text-red-500 text-sm bg-red-50 px-4 py-2.5 rounded-lg">{tr(error)}</p>}
 
             <button type="submit" disabled={loading}
               className="btn-primary w-full text-center flex items-center justify-center gap-2 mt-2">
               {loading ? (
                 <span className="inline-block w-4 h-4 border-2 border-cream/30 border-t-cream rounded-full animate-spin" />
-              ) : (isLogin ? 'Sign In' : 'Create Account')}
+              ) : (isLogin ? t('login.signIn') : t('login.createAccount'))}
             </button>
           </form>
 
           <p className="mt-6 text-center text-sm text-warm-brown/60">
-            {isLogin ? "Don't have an account? " : 'Already have an account? '}
+            {isLogin ? t('login.noAccount') : t('login.haveAccount')}
             <button onClick={() => { setIsLogin(!isLogin); setError(''); }}
               className="text-terra-500 hover:underline font-medium">
-              {isLogin ? 'Sign up' : 'Sign in'}
+              {isLogin ? t('login.signUpLink') : t('login.signInLink')}
             </button>
           </p>
         </div>

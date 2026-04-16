@@ -1,6 +1,7 @@
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
+import { LanguageProvider } from './contexts/LanguageContext';
 import { StoreProvider } from './contexts/StoreContext';
 
 import MainLayout from './components/layout/MainLayout';
@@ -24,37 +25,39 @@ import AdminWhyUs from './pages/admin/AdminWhyUs';
 export default function App() {
   return (
     <Router>
-      <AuthProvider>
-        <StoreProvider>
-          <CartProvider>
-            <Routes>
-              {/* Public routes with Navbar + Footer */}
-              <Route element={<MainLayout />}>
-                <Route index element={<HomePage />} />
-                <Route path="shop" element={<ShopPage />} />
-                <Route path="cart" element={<CartPage />} />
-                <Route path="checkout" element={<CheckoutPage />} />
-                <Route path="login" element={<LoginPage />} />
-              </Route>
+      <LanguageProvider>
+        <AuthProvider>
+          <StoreProvider>
+            <CartProvider>
+              <Routes>
+                {/* Public routes with Navbar + Footer */}
+                <Route element={<MainLayout />}>
+                  <Route index element={<HomePage />} />
+                  <Route path="shop" element={<ShopPage />} />
+                  <Route path="cart" element={<CartPage />} />
+                  <Route path="checkout" element={<CheckoutPage />} />
+                  <Route path="login" element={<LoginPage />} />
+                </Route>
 
-              {/* Admin routes — own layout, no main navbar */}
-              <Route path="admin" element={<AdminLayout />}>
-                <Route index element={<AdminDashboard />} />
-                <Route path="orders"       element={<AdminOrders />} />
-                <Route path="expenses"     element={<AdminExpenses />} />
-                <Route path="hero"         element={<AdminHero />} />
-                <Route path="categories"   element={<AdminCategories />} />
-                <Route path="products"     element={<AdminProducts />} />
-                <Route path="testimonials" element={<AdminTestimonials />} />
-                <Route path="why-us"       element={<AdminWhyUs />} />
-                <Route path="settings"     element={<AdminSettings />} />
-              </Route>
+                {/* Admin routes — own layout, no main navbar */}
+                <Route path="admin" element={<AdminLayout />}>
+                  <Route index element={<AdminDashboard />} />
+                  <Route path="orders"       element={<AdminOrders />} />
+                  <Route path="expenses"     element={<AdminExpenses />} />
+                  <Route path="hero"         element={<AdminHero />} />
+                  <Route path="categories"   element={<AdminCategories />} />
+                  <Route path="products"     element={<AdminProducts />} />
+                  <Route path="testimonials" element={<AdminTestimonials />} />
+                  <Route path="why-us"       element={<AdminWhyUs />} />
+                  <Route path="settings"     element={<AdminSettings />} />
+                </Route>
 
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </CartProvider>
-        </StoreProvider>
-      </AuthProvider>
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </CartProvider>
+          </StoreProvider>
+        </AuthProvider>
+      </LanguageProvider>
     </Router>
   );
 }

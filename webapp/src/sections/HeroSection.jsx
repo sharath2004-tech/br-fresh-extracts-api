@@ -1,19 +1,28 @@
 import { ArrowRight, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useLanguage } from '../contexts/LanguageContext';
 import { useStore } from '../contexts/StoreContext';
+import { useParallax3D } from '../hooks/useScrollAnimation';
 
 export default function HeroSection() {
   const { store } = useStore();
+  const { t, tr, lang } = useLanguage();
   const { title, subtitle, ctaText, backgroundImage } = store.hero;
+  const [bgRef, bgStyle] = useParallax3D({ intensity: 0.18, rotate: 4, perspective: 900 });
+  const [contentRef, contentStyle] = useParallax3D({ intensity: 0.1, rotate: -3, perspective: 900 });
 
   const scrollDown = () => window.scrollBy({ top: window.innerHeight, behavior: 'smooth' });
+  const heroTitle = lang === 'en' ? title : tr(title || t('hero.title'));
+  const heroSubtitle = lang === 'en' ? subtitle : tr(subtitle || t('hero.subtitle'));
+  const heroCta = lang === 'en' ? ctaText : tr(ctaText || t('hero.cta'));
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden grain-overlay">
       {/* Background */}
       <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-700"
-        style={{ backgroundImage: `url(${backgroundImage})` }}
+        ref={bgRef}
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-700 will-change-transform"
+        style={{ backgroundImage: `url(${backgroundImage})`, ...bgStyle }}
       />
       {/* Gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-forest-900/70 via-forest-900/50 to-forest-900/80" />
@@ -29,23 +38,23 @@ export default function HeroSection() {
       </svg>
 
       {/* Content */}
-      <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
+      <div ref={contentRef} style={contentStyle} className="relative z-10 text-center px-6 max-w-4xl mx-auto will-change-transform">
         <p className="font-sans text-terra-300 tracking-[0.3em] text-xs md:text-sm uppercase mb-6 animate-[fadeIn_1s_ease_both]">
-          100% Organic · Farm to Table · New Delhi
+          {t('hero.tagline')}
         </p>
         <h1 className="font-serif text-5xl md:text-7xl lg:text-8xl text-cream font-light leading-[1.1] mb-6 whitespace-pre-line text-balance">
-          {title}
+          {heroTitle}
         </h1>
         <div className="w-16 h-px bg-terra-400 mx-auto mb-6" />
         <p className="font-sans text-cream/75 text-base md:text-lg max-w-xl mx-auto leading-relaxed mb-10">
-          {subtitle}
+          {heroSubtitle}
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link to="/shop" className="btn-primary flex items-center gap-2 group">
-            {ctaText} <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+            {heroCta} <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
           </Link>
           <Link to="/shop" className="text-cream/70 hover:text-cream font-sans text-sm tracking-widest uppercase transition-colors">
-            View All Products
+            {t('hero.viewAll')}
           </Link>
         </div>
 

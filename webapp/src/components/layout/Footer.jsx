@@ -1,9 +1,11 @@
 import { Facebook, Instagram, Leaf, Mail, MessageCircle, Twitter } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useStore } from '../../contexts/StoreContext';
 
 export default function Footer() {
   const { store } = useStore();
+  const { t, tr } = useLanguage();
   const s = store.settings || {};
   return (
     <footer className="bg-forest-800 text-cream/80">
@@ -22,7 +24,7 @@ export default function Footer() {
             <span className="font-serif text-2xl text-cream font-semibold">BR Fresh Extracts</span>
           </div>
           <p className="text-cream/60 text-sm leading-relaxed max-w-xs">
-            Pure, certified organic products sourced directly from Indian farms. No compromise on quality, no compromise on nature.
+            {t('footer.tagline')}
           </p>
           <p className="mt-4 text-xs text-cream/40 tracking-widest uppercase">{s.address}</p>
           <div className="flex items-center gap-3 mt-6">
@@ -40,9 +42,9 @@ export default function Footer() {
 
         {/* Quick links */}
         <div>
-          <p className="font-serif text-cream text-lg mb-4">Explore</p>
+          <p className="font-serif text-cream text-lg mb-4">{t('footer.explore')}</p>
           <ul className="space-y-2 text-sm">
-            {[['/', 'Home'], ['/shop', 'Shop'], ['/shop?cat=Spices', 'Spices'], ['/shop?cat=Teas', 'Teas'], ['/shop?cat=Ghee+%26+Oils', 'Ghee & Oils']].map(([href, label]) => (
+            {[[ '/', t('nav.home') ], ['/shop', t('nav.shop')], ['/shop?cat=Spices', tr('Spices')], ['/shop?cat=Teas', tr('Teas')], ['/shop?cat=Ghee+%26+Oils', tr('Ghee & Oils')]].map(([href, label]) => (
               <li key={label}><Link to={href} className="hover:text-terra-400 transition-colors">{label}</Link></li>
             ))}
           </ul>
@@ -50,7 +52,7 @@ export default function Footer() {
 
         {/* Contact */}
         <div>
-          <p className="font-serif text-cream text-lg mb-4">Contact</p>
+          <p className="font-serif text-cream text-lg mb-4">{t('footer.contact')}</p>
           <ul className="space-y-3 text-sm">
             <li>
               <a href={`https://wa.me/${s.whatsappNumber}`} target="_blank" rel="noreferrer"
@@ -73,7 +75,7 @@ export default function Footer() {
       </div>
 
       <div className="border-t border-forest-700 text-center py-5 text-xs text-cream/30 tracking-wide">
-        © {new Date().getFullYear()} BR Fresh Extracts. All rights reserved. &nbsp;•&nbsp; Made with 🌿 in India
+        © {new Date().getFullYear()} BR Fresh Extracts. {t('footer.rights')} &nbsp;•&nbsp; {t('footer.made')}
       </div>
     </footer>
   );

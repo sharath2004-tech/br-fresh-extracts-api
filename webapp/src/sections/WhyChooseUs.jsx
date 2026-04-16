@@ -1,11 +1,15 @@
 import { Leaf, ShieldCheck, Sprout, Truck } from 'lucide-react';
 import AnimatedSection from '../components/ui/AnimatedSection';
+import { useLanguage } from '../contexts/LanguageContext';
 import { useStore } from '../contexts/StoreContext';
+import { useParallax3D } from '../hooks/useScrollAnimation';
 
 const iconMap = { leaf: Leaf, sprout: Sprout, shield: ShieldCheck, truck: Truck };
 
 export default function WhyChooseUs() {
   const { store } = useStore();
+  const { t, tr } = useLanguage();
+  const [sectionRef, sectionStyle] = useParallax3D({ intensity: 0.05, rotate: 2, perspective: 1000 });
 
   return (
     <section className="py-20 md:py-28 bg-forest-700 grain-overlay relative overflow-hidden">
@@ -13,11 +17,11 @@ export default function WhyChooseUs() {
       <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-forest-600/40 pointer-events-none" />
       <div className="absolute -left-12 -bottom-12 w-48 h-48 rounded-full bg-terra-500/10 pointer-events-none" />
 
-      <div className="relative z-10 max-w-7xl mx-auto px-6">
+      <div ref={sectionRef} style={sectionStyle} className="relative z-10 max-w-7xl mx-auto px-6 will-change-transform">
         <AnimatedSection className="text-center mb-14">
-          <p className="text-terra-300 tracking-[0.25em] text-xs uppercase font-sans mb-3">Why BR Fresh?</p>
+          <p className="text-terra-300 tracking-[0.25em] text-xs uppercase font-sans mb-3">{t('why.kicker')}</p>
           <h2 className="font-serif text-4xl md:text-5xl text-cream font-light leading-tight">
-            Our Promise to You
+            {t('why.title')}
           </h2>
           <div className="w-12 h-px bg-terra-400 mx-auto mt-4" />
         </AnimatedSection>
@@ -30,8 +34,8 @@ export default function WhyChooseUs() {
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-terra-500/20 group-hover:bg-terra-500/30 transition-colors mb-5 mx-auto">
                   <Icon className="text-terra-300" size={28} strokeWidth={1.5} />
                 </div>
-                <h3 className="font-serif text-xl text-cream mb-2">{item.title}</h3>
-                <p className="text-cream/60 text-sm leading-relaxed">{item.description}</p>
+                <h3 className="font-serif text-xl text-cream mb-2">{tr(item.title)}</h3>
+                <p className="text-cream/60 text-sm leading-relaxed">{tr(item.description)}</p>
               </AnimatedSection>
             );
           })}

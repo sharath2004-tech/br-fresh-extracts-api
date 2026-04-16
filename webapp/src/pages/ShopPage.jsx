@@ -3,10 +3,12 @@ import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AnimatedSection from '../components/ui/AnimatedSection';
 import { useCart } from '../contexts/CartContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { useStore } from '../contexts/StoreContext';
 
 function ProductCard({ product }) {
   const { items, addToCart, updateQty, cartKey } = useCart();
+  const { t, tr } = useLanguage();
 
   const variants = (product.variants && product.variants.length) ? product.variants : [{ size: product.weight, price: product.price }];
   const [selectedVariant, setSelectedVariant] = useState(variants[0]);
@@ -30,14 +32,14 @@ function ProductCard({ product }) {
         />
         {product.featured && (
           <span className="absolute top-3 left-3 bg-terra-500 text-cream text-xs px-2.5 py-1 rounded-full font-medium">
-            Bestseller
+            {t('shop.bestseller')}
           </span>
         )}
       </div>
       <div className="p-5 flex flex-col flex-1">
-        <p className="text-xs text-terra-500 font-medium mb-1 tracking-wide">{product.category}</p>
-        <h3 className="font-serif text-lg text-forest-700 mb-1 leading-tight">{product.name}</h3>
-        <p className="text-xs text-warm-brown/60 mb-3 line-clamp-2">{product.description}</p>
+        <p className="text-xs text-terra-500 font-medium mb-1 tracking-wide">{tr(product.category)}</p>
+        <h3 className="font-serif text-lg text-forest-700 mb-1 leading-tight">{tr(product.name)}</h3>
+        <p className="text-xs text-warm-brown/60 mb-3 line-clamp-2">{tr(product.description)}</p>
 
         {/* Variant selector */}
         <div className="flex gap-2 mb-3">
@@ -80,7 +82,7 @@ function ProductCard({ product }) {
               className="flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-full bg-terra-500 hover:bg-terra-600 text-cream transition-all duration-300"
             >
               <ShoppingCart size={13} />
-              Add to Cart
+              {t('shop.addToCart')}
             </button>
           )}
         </div>
@@ -91,6 +93,7 @@ function ProductCard({ product }) {
 
 export default function ShopPage() {
   const { store } = useStore();
+  const { t, tr } = useLanguage();
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -117,9 +120,9 @@ export default function ShopPage() {
     <div className="pt-20 min-h-screen bg-cream">
       {/* Page header */}
       <div className="bg-ivory py-14 px-6 text-center border-b border-sand-200">
-        <p className="text-terra-500 tracking-[0.25em] text-xs uppercase font-sans mb-2">All Products</p>
-        <h1 className="font-serif text-4xl md:text-5xl text-forest-700">Our Store</h1>
-        <p className="text-warm-brown/60 mt-3 text-sm max-w-md mx-auto">Pure, organic goodness — straight from nature to your doorstep.</p>
+        <p className="text-terra-500 tracking-[0.25em] text-xs uppercase font-sans mb-2">{t('shop.kicker')}</p>
+        <h1 className="font-serif text-4xl md:text-5xl text-forest-700">{t('shop.title')}</h1>
+        <p className="text-warm-brown/60 mt-3 text-sm max-w-md mx-auto">{t('shop.subtitle')}</p>
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-10">
@@ -129,7 +132,7 @@ export default function ShopPage() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-warm-brown/40" size={16} />
             <input
               type="text"
-              placeholder="Search products..."
+              placeholder={t('shop.searchPlaceholder')}
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="input-field pl-10 text-sm"
@@ -142,7 +145,7 @@ export default function ShopPage() {
           </div>
           <button onClick={() => setShowFilters(!showFilters)}
             className="md:hidden flex items-center gap-2 text-sm text-warm-brown border border-sand-300 px-4 py-2.5 rounded-lg">
-            <SlidersHorizontal size={15} /> Filters
+            <SlidersHorizontal size={15} /> {t('shop.filters')}
           </button>
         </div>
 
@@ -157,13 +160,13 @@ export default function ShopPage() {
                   ? 'bg-terra-500 text-cream shadow-sm'
                   : 'bg-white text-warm-brown border border-sand-300 hover:border-terra-300 hover:text-terra-500'
               }`}
-            >{cat}</button>
+            >{cat === 'All' ? t('shop.all') : tr(cat)}</button>
           ))}
         </div>
 
         {/* Results info */}
         <p className="text-xs text-warm-brown/50 mb-6 font-sans">
-          {filtered.length} product{filtered.length !== 1 ? 's' : ''} found
+          {t('shop.productsFound', { count: filtered.length, plural: filtered.length !== 1 ? 's' : '' })}
         </p>
 
         {/* Product grid */}
@@ -177,8 +180,8 @@ export default function ShopPage() {
           </div>
         ) : (
           <div className="text-center py-20">
-            <p className="font-serif text-2xl text-forest-600 mb-2">No products found</p>
-            <p className="text-warm-brown/50 text-sm">Try a different search or category.</p>
+            <p className="font-serif text-2xl text-forest-600 mb-2">{t('shop.noProducts')}</p>
+            <p className="text-warm-brown/50 text-sm">{t('shop.tryDifferent')}</p>
           </div>
         )}
       </div>

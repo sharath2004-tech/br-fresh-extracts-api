@@ -1,18 +1,22 @@
 import { Link } from 'react-router-dom';
 import AnimatedSection from '../components/ui/AnimatedSection';
+import { useLanguage } from '../contexts/LanguageContext';
 import { useStore } from '../contexts/StoreContext';
+import { useParallax3D } from '../hooks/useScrollAnimation';
 
 export default function CategoriesSection() {
   const { store } = useStore();
+  const { t, tr } = useLanguage();
+  const [sectionRef, sectionStyle] = useParallax3D({ intensity: 0.08, rotate: 2, perspective: 1000 });
 
   return (
     <section className="py-20 md:py-28 bg-ivory">
-      <div className="max-w-7xl mx-auto px-6">
+      <div ref={sectionRef} style={sectionStyle} className="max-w-7xl mx-auto px-6 will-change-transform">
         <AnimatedSection className="text-center mb-14">
-          <p className="text-terra-500 tracking-[0.25em] text-xs uppercase font-sans mb-3">What We Offer</p>
-          <h2 className="section-title">Our Collections</h2>
+          <p className="text-terra-500 tracking-[0.25em] text-xs uppercase font-sans mb-3">{t('categories.kicker')}</p>
+          <h2 className="section-title">{t('categories.title')}</h2>
           <p className="section-subtitle mt-3 max-w-lg mx-auto">
-            Every category, curated for purity and flavour from farms we personally trust.
+            {t('categories.subtitle')}
           </p>
         </AnimatedSection>
 
@@ -34,10 +38,10 @@ export default function CategoriesSection() {
                 </div>
                 {/* Text */}
                 <div className="p-5">
-                  <h3 className="font-serif text-xl text-forest-700 mb-1 group-hover:text-terra-500 transition-colors">{cat.name}</h3>
-                  <p className="text-sm text-warm-brown/65 leading-snug">{cat.description}</p>
+                  <h3 className="font-serif text-xl text-forest-700 mb-1 group-hover:text-terra-500 transition-colors">{tr(cat.name)}</h3>
+                  <p className="text-sm text-warm-brown/65 leading-snug">{tr(cat.description)}</p>
                   <p className="mt-3 text-terra-500 text-xs font-medium tracking-widest uppercase group-hover:underline underline-offset-2">
-                    Shop {cat.name} →
+                    {t('categories.shop', { cat: tr(cat.name) })}
                   </p>
                 </div>
               </Link>

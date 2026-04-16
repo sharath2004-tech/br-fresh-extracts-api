@@ -1,0 +1,425 @@
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+
+const LanguageContext = createContext(null);
+
+const _rawApi = import.meta.env.VITE_API_URL || '/api/';
+const API_URL = _rawApi.endsWith('/') ? _rawApi : _rawApi + '/';
+
+const translations = {
+  en: {
+    'nav.home': 'Home',
+    'nav.shop': 'Shop',
+    'nav.signIn': 'Sign In',
+    'nav.signOut': 'Sign out',
+    'nav.admin': 'Admin Panel',
+    'hero.tagline': '100% Organic · Farm to Table · New Delhi',
+    'hero.viewAll': 'View All Products',
+    'hero.cta': 'Shop Now',
+    'hero.title': 'Pure from Nature,\nCrafted for You',
+    'hero.subtitle': 'Discover the finest organic spices, teas, ghee & oils sourced directly from certified Indian farms — unprocessed, uncompromised.',
+    'categories.kicker': 'What We Offer',
+    'categories.title': 'Our Collections',
+    'categories.subtitle': 'Every category, curated for purity and flavour from farms we personally trust.',
+    'categories.shop': 'Shop {cat} →',
+    'featured.kicker': 'Bestsellers',
+    'featured.title': 'Featured Products',
+    'featured.viewAll': 'View All',
+    'featured.add': 'Add',
+    'why.kicker': 'Why BR Fresh?',
+    'why.title': 'Our Promise to You',
+    'testimonials.kicker': 'Customer Love',
+    'testimonials.title': 'What Our Customers Say',
+    'newsletter.title': 'Stay in the Loop',
+    'newsletter.subtitle': 'Join our community for seasonal recipes, farm stories, exclusive offers and new product launches.',
+    'newsletter.thanks': "🌿 Thank you! You're on the list.",
+    'newsletter.subscribe': 'Subscribe',
+    'newsletter.placeholder': 'your@email.com',
+    'newsletter.note': 'No spam, ever. Unsubscribe anytime.',
+    'footer.explore': 'Explore',
+    'footer.contact': 'Contact',
+    'footer.tagline': 'Pure, certified organic products sourced directly from Indian farms. No compromise on quality, no compromise on nature.',
+    'footer.rights': 'All rights reserved.',
+    'footer.made': 'Made with 🌿 in India',
+    'checkout.emptyTitle': 'Your cart is empty',
+    'checkout.emptyCta': 'Browse Products',
+    'checkout.title': 'Checkout',
+    'checkout.contact': 'Contact Details',
+    'checkout.fullName': 'Full Name *',
+    'checkout.phone': 'Phone Number *',
+    'checkout.email': 'Email (optional)',
+    'checkout.delivery': 'Delivery Address',
+    'checkout.useLocation': 'Use My Location',
+    'checkout.detecting': 'Detecting...',
+    'checkout.locationPinned': 'Location pinned',
+    'checkout.viewMaps': 'View on Google Maps',
+    'checkout.addressLine': 'Address Line *',
+    'checkout.city': 'City *',
+    'checkout.state': 'State *',
+    'checkout.pincode': 'Pincode *',
+    'checkout.payment': 'Payment Method',
+    'checkout.upi': 'UPI Payment',
+    'checkout.upiDesc': 'Pay now via UPI & upload screenshot',
+    'checkout.cod': 'Cash on Delivery',
+    'checkout.codDesc': 'Pay cash when order arrives',
+    'checkout.payTo': 'Pay to our UPI ID',
+    'checkout.amount': 'Amount',
+    'checkout.uploadHint': 'Then upload the payment screenshot below for confirmation.',
+    'checkout.uploadRequired': 'Please upload your UPI payment screenshot to continue.',
+    'checkout.uploadBtn': 'Upload Payment Screenshot',
+    'checkout.uploadSub': 'JPG, PNG accepted',
+    'checkout.agentTitle': 'Our agent will call you to confirm',
+    'checkout.agentDesc': 'After placing the order, our team will call you on {phone} to confirm the order before dispatch. Please keep your phone reachable.',
+    'checkout.geoUnsupported': 'Geolocation not supported by your browser.',
+    'checkout.geoError': 'Could not get location. Please allow location access and try again.',
+    'checkout.summary': 'Order Summary',
+    'checkout.subtotal': 'Subtotal',
+    'checkout.shipping': 'Shipping',
+    'checkout.shippingDiscuss': 'To be discussed',
+    'checkout.shippingFree': 'Free',
+    'checkout.total': 'Total',
+    'checkout.placeCod': 'Place COD Order',
+    'checkout.confirmUpi': 'Confirm UPI Order on WhatsApp',
+    'checkout.placing': 'Placing Order…',
+    'checkout.backToCart': '← Back to Cart',
+    'checkout.noteCod': 'Our agent will call you to confirm before dispatch.',
+    'checkout.noteUpi': 'Your order + payment screenshot will be sent via WhatsApp.',
+    'whatsapp.newCod': '🛒 *New COD Order — BR Fresh Extracts*',
+    'whatsapp.newUpi': '🛒 *New UPI Order — BR Fresh Extracts*',
+    'whatsapp.orderId': '*Order ID:* {id}',
+    'whatsapp.name': '*Name:* {name}',
+    'whatsapp.phone': '*Phone:* {phone}',
+    'whatsapp.email': '*Email:* {email}',
+    'whatsapp.addressTitle': '*Delivery Address:*',
+    'whatsapp.location': '📍 Location: {link}',
+    'whatsapp.detailsTitle': '*Order Details:*',
+    'whatsapp.subtotal': '*Subtotal:* ₹{amount}',
+    'whatsapp.shipping': '*Shipping:* {amount}',
+    'whatsapp.shippingDiscuss': '📦 Shipping charges will be confirmed before dispatch.',
+    'whatsapp.total': '*Grand Total:* ₹{amount}',
+    'whatsapp.codNote': '🚚 *Payment: Cash on Delivery* — Please call customer to confirm order.',
+    'whatsapp.upiNote': '💳 *Payment: UPI* — Payment screenshot attached. Please verify and approve.',
+    'shop.kicker': 'All Products',
+    'shop.title': 'Our Store',
+    'shop.subtitle': 'Pure, organic goodness — straight from nature to your doorstep.',
+    'shop.searchPlaceholder': 'Search products...',
+    'shop.filters': 'Filters',
+    'shop.all': 'All',
+    'shop.bestseller': 'Bestseller',
+    'shop.addToCart': 'Add to Cart',
+    'shop.productsFound': '{count} product{plural} found',
+    'shop.noProducts': 'No products found',
+    'shop.tryDifferent': 'Try a different search or category.',
+    'cart.emptyTitle': 'Your cart is empty',
+    'cart.emptySubtitle': 'Add some organic goodness to get started.',
+    'cart.emptyCta': 'Browse Products',
+    'cart.title': 'Your Cart',
+    'cart.itemsLabel': '({count} item{plural})',
+    'cart.clearConfirm': 'Clear your cart?',
+    'cart.clearButton': 'Clear cart',
+    'cart.summary': 'Order Summary',
+    'cart.subtotal': 'Subtotal',
+    'cart.shipping': 'Shipping',
+    'cart.free': 'Free',
+    'cart.freePrompt': 'Add ₹{amount} more for free shipping!',
+    'cart.total': 'Total',
+    'cart.checkout': 'Proceed to Checkout',
+    'cart.continue': 'Continue Shopping',
+    'login.panelSubtitle': 'Pure from Nature, Crafted for You — join our community of conscious living.',
+    'login.panelBullet1': 'Access exclusive member offers',
+    'login.panelBullet2': 'Track your orders',
+    'login.panelBullet3': 'Get seasonal recipes & tips',
+    'login.welcome': 'Welcome back',
+    'login.create': 'Create an account',
+    'login.signInSub': 'Sign in to your account',
+    'login.signUpSub': 'Join the BR Fresh Extracts community',
+    'login.fullName': 'Full Name',
+    'login.email': 'Email',
+    'login.password': 'Password',
+    'login.signIn': 'Sign In',
+    'login.createAccount': 'Create Account',
+    'login.noAccount': "Don't have an account? ",
+    'login.haveAccount': 'Already have an account? ',
+    'login.signUpLink': 'Sign up',
+    'login.signInLink': 'Sign in',
+  },
+  hi: {
+    'nav.home': 'होम',
+    'nav.shop': 'दुकान',
+    'nav.signIn': 'साइन इन',
+    'nav.signOut': 'साइन आउट',
+    'nav.admin': 'एडमिन पैनल',
+    'hero.tagline': '100% ऑर्गेनिक · फार्म से आपकी टेबल तक · नई दिल्ली',
+    'hero.viewAll': 'सभी उत्पाद देखें',
+    'hero.cta': 'अभी खरीदें',
+    'hero.title': 'प्रकृति की शुद्धता,\nआपके लिए तैयार',
+    'hero.subtitle': 'प्रमाणित भारतीय फार्म से सीधे चुने गए ऑर्गेनिक मसाले, चाय, घी और तेल — शुद्ध और असली।',
+    'categories.kicker': 'हम क्या पेश करते हैं',
+    'categories.title': 'हमारे कलेक्शन',
+    'categories.subtitle': 'हर श्रेणी शुद्धता और स्वाद के लिए विशेष रूप से चुनी गई।',
+    'categories.shop': '{cat} खरीदें →',
+    'featured.kicker': 'बेस्टसेलर',
+    'featured.title': 'चुनिंदा उत्पाद',
+    'featured.viewAll': 'सभी देखें',
+    'featured.add': 'जोड़ें',
+    'why.kicker': 'BR Fresh क्यों?',
+    'why.title': 'आपसे हमारा वादा',
+    'testimonials.kicker': 'ग्राहकों का प्यार',
+    'testimonials.title': 'हमारे ग्राहक क्या कहते हैं',
+    'newsletter.title': 'जुड़े रहें',
+    'newsletter.subtitle': 'सीजनल रेसिपी, फार्म कहानियां और नए प्रोडक्ट्स की जानकारी पाएं।',
+    'newsletter.thanks': '🌿 धन्यवाद! आप सूची में हैं।',
+    'newsletter.subscribe': 'सब्सक्राइब',
+    'newsletter.placeholder': 'आपका@ईमेल.कॉम',
+    'newsletter.note': 'कोई स्पैम नहीं। कभी भी अनसब्सक्राइब करें।',
+    'footer.explore': 'खोजें',
+    'footer.contact': 'संपर्क',
+    'footer.tagline': 'शुद्ध, प्रमाणित ऑर्गेनिक उत्पाद सीधे भारतीय फार्म से।',
+    'footer.rights': 'सर्वाधिकार सुरक्षित।',
+    'footer.made': 'भारत में 🌿 के साथ बनाया गया',
+    'checkout.emptyTitle': 'आपकी कार्ट खाली है',
+    'checkout.emptyCta': 'उत्पाद देखें',
+    'checkout.title': 'चेकआउट',
+    'checkout.contact': 'संपर्क विवरण',
+    'checkout.fullName': 'पूरा नाम *',
+    'checkout.phone': 'फोन नंबर *',
+    'checkout.email': 'ईमेल (वैकल्पिक)',
+    'checkout.delivery': 'डिलीवरी पता',
+    'checkout.useLocation': 'मेरी लोकेशन उपयोग करें',
+    'checkout.detecting': 'लोकेशन ढूंढी जा रही है...',
+    'checkout.locationPinned': 'लोकेशन सेव हो गई',
+    'checkout.viewMaps': 'गूगल मैप्स पर देखें',
+    'checkout.addressLine': 'पता *',
+    'checkout.city': 'शहर *',
+    'checkout.state': 'राज्य *',
+    'checkout.pincode': 'पिनकोड *',
+    'checkout.payment': 'भुगतान तरीका',
+    'checkout.upi': 'UPI भुगतान',
+    'checkout.upiDesc': 'UPI से भुगतान करें और स्क्रीनशॉट अपलोड करें',
+    'checkout.cod': 'कैश ऑन डिलीवरी',
+    'checkout.codDesc': 'डिलीवरी पर नकद भुगतान',
+    'checkout.payTo': 'UPI ID पर भुगतान करें',
+    'checkout.amount': 'राशि',
+    'checkout.uploadHint': 'फिर भुगतान का स्क्रीनशॉट अपलोड करें।',
+    'checkout.uploadRequired': 'कृपया UPI भुगतान का स्क्रीनशॉट अपलोड करें।',
+    'checkout.uploadBtn': 'भुगतान स्क्रीनशॉट अपलोड करें',
+    'checkout.uploadSub': 'JPG, PNG स्वीकार्य',
+    'checkout.agentTitle': 'हमारा एजेंट पुष्टि के लिए कॉल करेगा',
+    'checkout.agentDesc': 'ऑर्डर के बाद हमारी टीम {phone} पर कॉल करेगी। कृपया फोन उपलब्ध रखें।',
+    'checkout.geoUnsupported': 'आपके ब्राउज़र में लोकेशन सपोर्ट नहीं है।',
+    'checkout.geoError': 'लोकेशन नहीं मिल पाई। कृपया अनुमति दें और फिर कोशिश करें।',
+    'checkout.summary': 'ऑर्डर सारांश',
+    'checkout.subtotal': 'उप-योग',
+    'checkout.shipping': 'शिपिंग',
+    'checkout.shippingDiscuss': 'बात करके तय होगा',
+    'checkout.shippingFree': 'मुफ़्त',
+    'checkout.total': 'कुल',
+    'checkout.placeCod': 'COD ऑर्डर करें',
+    'checkout.confirmUpi': 'WhatsApp पर UPI ऑर्डर पुष्टि करें',
+    'checkout.placing': 'ऑर्डर हो रहा है…',
+    'checkout.backToCart': '← कार्ट पर वापस जाएँ',
+    'checkout.noteCod': 'डिस्पैच से पहले पुष्टि के लिए कॉल आएगा।',
+    'checkout.noteUpi': 'ऑर्डर और भुगतान स्क्रीनशॉट WhatsApp पर भेजे जाएंगे।',
+    'whatsapp.newCod': '🛒 *नई COD ऑर्डर — BR Fresh Extracts*',
+    'whatsapp.newUpi': '🛒 *नई UPI ऑर्डर — BR Fresh Extracts*',
+    'whatsapp.orderId': '*ऑर्डर ID:* {id}',
+    'whatsapp.name': '*नाम:* {name}',
+    'whatsapp.phone': '*फोन:* {phone}',
+    'whatsapp.email': '*ईमेल:* {email}',
+    'whatsapp.addressTitle': '*डिलीवरी पता:*',
+    'whatsapp.location': '📍 लोकेशन: {link}',
+    'whatsapp.detailsTitle': '*ऑर्डर विवरण:*',
+    'whatsapp.subtotal': '*उप-योग:* ₹{amount}',
+    'whatsapp.shipping': '*शिपिंग:* {amount}',
+    'whatsapp.shippingDiscuss': '📦 शिपिंग चार्ज डिस्पैच से पहले बताया जाएगा।',
+    'whatsapp.total': '*कुल:* ₹{amount}',
+    'whatsapp.codNote': '🚚 *भुगतान: COD* — कृपया ग्राहक को कॉल करके पुष्टि करें।',
+    'whatsapp.upiNote': '💳 *भुगतान: UPI* — कृपया स्क्रीनशॉट जाँचकर पुष्टि करें।',
+  },
+  te: {
+    'nav.home': 'హోమ్',
+    'nav.shop': 'షాప్',
+    'nav.signIn': 'సైన్ ఇన్',
+    'nav.signOut': 'సైన్ అవుట్',
+    'nav.admin': 'అడ్మిన్ ప్యానెల్',
+    'hero.tagline': '100% ఆర్గానిక్ · ఫారం నుంచి మీ టేబుల్‌కి · న్యూఢిల్లీ',
+    'hero.viewAll': 'అన్ని ఉత్పత్తులు చూడండి',
+    'hero.cta': 'ఇప్పుడే కొనండి',
+    'hero.title': 'ప్రకృతి నుండి స్వచ్ఛత,\nమీ కోసం సిద్ధం',
+    'hero.subtitle': 'సర్టిఫైడ్ భారతీయ రైతుల నుండి ఆర్గానిక్ మసాలాలు, టీలు, నెయ్యి & నూనెలు — స్వచ్ఛంగా.',
+    'categories.kicker': 'మేము అందించేది',
+    'categories.title': 'మా కలెక్షన్స్',
+    'categories.subtitle': 'ప్రతి కేటగిరీని స్వచ్ఛత మరియు రుచికి ఎంపిక చేశాం.',
+    'categories.shop': '{cat} కొనండి →',
+    'featured.kicker': 'బెస్ట్‌సెల్లర్స్',
+    'featured.title': 'ఫీచర్డ్ ప్రొడక్ట్స్',
+    'featured.viewAll': 'అన్నీ చూడండి',
+    'featured.add': 'జోడించండి',
+    'why.kicker': 'BR Fresh ఎందుకు?',
+    'why.title': 'మీకు మా హామీ',
+    'testimonials.kicker': 'కస్టమర్ ప్రేమ',
+    'testimonials.title': 'మా కస్టమర్లు ఏమంటున్నారు',
+    'newsletter.title': 'అప్‌డేట్స్ పొందండి',
+    'newsletter.subtitle': 'సీజనల్ రెసిపీలు, ఫారం కథలు, ఆఫర్లు మరియు కొత్త ఉత్పత్తుల సమాచారం.',
+    'newsletter.thanks': '🌿 ధన్యవాదాలు! మీరు లిస్ట్‌లో ఉన్నారు.',
+    'newsletter.subscribe': 'సబ్‌స్క్రైబ్',
+    'newsletter.placeholder': 'మీ@email.com',
+    'newsletter.note': 'స్పామ్ లేదు. ఎప్పుడైనా అన్సబ్‌స్క్రైబ్ చేయండి.',
+    'footer.explore': 'అన్వేషించండి',
+    'footer.contact': 'సంప్రదించండి',
+    'footer.tagline': 'శుద్ధమైన సర్టిఫైడ్ ఆర్గానిక్ ఉత్పత్తులు భారతీయ ఫార్మ్‌ల నుండి.',
+    'footer.rights': 'అన్ని హక్కులు పరిరక్షించబడ్డాయి.',
+    'footer.made': 'భారతదేశంలో 🌿తో తయారు',
+    'checkout.emptyTitle': 'మీ కార్ట్ ఖాళీగా ఉంది',
+    'checkout.emptyCta': 'ఉత్పత్తులు చూడండి',
+    'checkout.title': 'చెక్‌అవుట్',
+    'checkout.contact': 'సంప్రదింపు వివరాలు',
+    'checkout.fullName': 'పూర్తి పేరు *',
+    'checkout.phone': 'ఫోన్ నంబర్ *',
+    'checkout.email': 'ఈమెయిల్ (ఐచ్ఛికం)',
+    'checkout.delivery': 'డెలివరీ చిరునామా',
+    'checkout.useLocation': 'నా లొకేషన్ ఉపయోగించండి',
+    'checkout.detecting': 'లొకేషన్ గుర్తిస్తోంది...',
+    'checkout.locationPinned': 'లొకేషన్ సేవ్ అయ్యింది',
+    'checkout.viewMaps': 'Google Maps లో చూడండి',
+    'checkout.addressLine': 'చిరునామా *',
+    'checkout.city': 'నగరం *',
+    'checkout.state': 'రాష్ట్రం *',
+    'checkout.pincode': 'పిన్‌కోడ్ *',
+    'checkout.payment': 'చెల్లింపు విధానం',
+    'checkout.upi': 'UPI చెల్లింపు',
+    'checkout.upiDesc': 'UPI ద్వారా చెల్లించి స్క్రీన్‌షాట్ అప్‌లోడ్ చేయండి',
+    'checkout.cod': 'క్యాష్ ఆన్ డెలివరీ',
+    'checkout.codDesc': 'డెలివరీ సమయంలో నగదు చెల్లింపు',
+    'checkout.payTo': 'UPI IDకి చెల్లించండి',
+    'checkout.amount': 'మొత్తం',
+    'checkout.uploadHint': 'తర్వాత చెల్లింపు స్క్రీన్‌షాట్ అప్‌లోడ్ చేయండి.',
+    'checkout.uploadRequired': 'దయచేసి UPI చెల్లింపు స్క్రీన్‌షాట్ అప్‌లోడ్ చేయండి.',
+    'checkout.uploadBtn': 'చెల్లింపు స్క్రీన్‌షాట్ అప్‌లోడ్ చేయండి',
+    'checkout.uploadSub': 'JPG, PNG అనుమతిస్తాం',
+    'checkout.agentTitle': 'నిర్ధారణ కోసం మా ఏజెంట్ కాల్ చేస్తారు',
+    'checkout.agentDesc': 'ఆర్డర్ తర్వాత మా టీమ్ {phone}కి కాల్ చేస్తారు. ఫోన్ అందుబాటులో ఉంచండి.',
+    'checkout.geoUnsupported': 'మీ బ్రౌజర్‌లో జియోలొకేషన్ సపోర్ట్ లేదు.',
+    'checkout.geoError': 'లొకేషన్ లభించలేదు. దయచేసి అనుమతి ఇవ్వండి.',
+    'checkout.summary': 'ఆర్డర్ సంగ్రహం',
+    'checkout.subtotal': 'సబ్‌టోటల్',
+    'checkout.shipping': 'షిప్పింగ్',
+    'checkout.shippingDiscuss': 'చర్చించి నిర్ణయిస్తాం',
+    'checkout.shippingFree': 'ఉచితం',
+    'checkout.total': 'మొత్తం',
+    'checkout.placeCod': 'COD ఆర్డర్ చేయండి',
+    'checkout.confirmUpi': 'WhatsAppలో UPI ఆర్డర్ నిర్ధారించండి',
+    'checkout.placing': 'ఆర్డర్ చేయబడుతోంది…',
+    'checkout.backToCart': '← కార్ట్‌కు తిరిగి',
+    'checkout.noteCod': 'డిస్పాచ్ ముందు నిర్ధారణ కోసం కాల్ చేస్తారు.',
+    'checkout.noteUpi': 'ఆర్డర్ మరియు చెల్లింపు స్క్రీన్‌షాట్ WhatsAppలో పంపబడతాయి.',
+    'whatsapp.newCod': '🛒 *కొత్త COD ఆర్డర్ — BR Fresh Extracts*',
+    'whatsapp.newUpi': '🛒 *కొత్త UPI ఆర్డర్ — BR Fresh Extracts*',
+    'whatsapp.orderId': '*ఆర్డర్ ID:* {id}',
+    'whatsapp.name': '*పేరు:* {name}',
+    'whatsapp.phone': '*ఫోన్:* {phone}',
+    'whatsapp.email': '*ఈమెయిల్:* {email}',
+    'whatsapp.addressTitle': '*డెలివరీ చిరునామా:*',
+    'whatsapp.location': '📍 లొకేషన్: {link}',
+    'whatsapp.detailsTitle': '*ఆర్డర్ వివరాలు:*',
+    'whatsapp.subtotal': '*సబ్‌టోటల్:* ₹{amount}',
+    'whatsapp.shipping': '*షిప్పింగ్:* {amount}',
+    'whatsapp.shippingDiscuss': '📦 షిప్పింగ్ ఛార్జీలు డిస్పాచ్ ముందు తెలియజేస్తాం.',
+    'whatsapp.total': '*మొత్తం:* ₹{amount}',
+    'whatsapp.codNote': '🚚 *చెల్లింపు: COD* — కస్టమర్‌కు కాల్ చేసి నిర్ధారించండి.',
+    'whatsapp.upiNote': '💳 *చెల్లింపు: UPI* — స్క్రీన్‌షాట్ చూసి నిర్ధారించండి.',
+  }
+};
+
+const languageLabels = { en: 'EN', hi: 'हिंदी', te: 'తెలుగు' };
+
+export function LanguageProvider({ children }) {
+  const [lang, setLang] = useState(() => {
+    try { return localStorage.getItem('so_lang') || 'en'; } catch { return 'en'; }
+  });
+  const [autoMap, setAutoMap] = useState({});
+  const pending = useRef(new Set());
+
+  const setLanguage = (next) => {
+    setLang(next);
+    try { localStorage.setItem('so_lang', next); } catch { /* ignore */ }
+  };
+
+  useEffect(() => {
+    if (lang === 'en') {
+      setAutoMap({});
+      return;
+    }
+    try {
+      const stored = localStorage.getItem(`so_translate_${lang}`);
+      setAutoMap(stored ? JSON.parse(stored) : {});
+    } catch {
+      setAutoMap({});
+    }
+  }, [lang]);
+
+  const interpolate = (template, vars = {}) =>
+    template.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
+
+  const translateRemote = async (text, target) => {
+    try {
+      const res = await fetch(`${API_URL}translate/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, target, source: 'en' }),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.translatedText || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const cacheTranslation = (text, translated) => {
+    setAutoMap(prev => {
+      const next = { ...prev, [text]: translated };
+      try { localStorage.setItem(`so_translate_${lang}`, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  };
+
+  const tr = useMemo(() => (text) => {
+    if (!text) return '';
+    if (lang === 'en') return text;
+    if (autoMap[text]) return autoMap[text];
+    if (pending.current.has(text)) return text;
+    pending.current.add(text);
+    translateRemote(text, lang).then((translated) => {
+      if (translated) cacheTranslation(text, translated);
+      pending.current.delete(text);
+    });
+    return text;
+  }, [lang, autoMap]);
+
+  const translateAsync = async (text) => {
+    if (!text) return '';
+    if (lang === 'en') return text;
+    if (autoMap[text]) return autoMap[text];
+    const translated = await translateRemote(text, lang);
+    if (translated) cacheTranslation(text, translated);
+    return translated || text;
+  };
+
+  const t = useMemo(() => (key, vars = {}) => {
+    const base = translations.en[key] || key;
+    if (lang === 'en') return interpolate(base, vars);
+    const manual = translations[lang]?.[key];
+    if (manual) return interpolate(manual, vars);
+    return interpolate(tr(base), vars);
+  }, [lang, tr]);
+
+  const value = useMemo(() => ({ lang, setLang: setLanguage, t, tr, translateAsync, languages: languageLabels }), [lang, t, tr, translateAsync]);
+
+  return (
+    <LanguageContext.Provider value={value}>
+      {children}
+    </LanguageContext.Provider>
+  );
+}
+
+export const useLanguage = () => useContext(LanguageContext);

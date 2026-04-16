@@ -3,11 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
-
-const links = [
-  { to: '/',     label: 'Home',  end: true },
-  { to: '/shop', label: 'Shop' },
-];
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -15,10 +11,16 @@ export default function Navbar() {
   const [dropOpen, setDropOpen] = useState(false);
   const { user, logout, isAdmin } = useAuth();
   const { count } = useCart();
+  const { lang, setLang, t, languages } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const isHome = location.pathname === '/';
   const light = isHome && !scrolled;
+
+  const links = [
+    { to: '/',     label: t('nav.home'),  end: true },
+    { to: '/shop', label: t('nav.shop') },
+  ];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -47,7 +49,7 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden md:flex items-center gap-8">
           {links.map(({ to, label, end }) => (
             <NavLink key={to} to={to} end={end}
               className={({ isActive }) =>
@@ -73,6 +75,23 @@ export default function Navbar() {
             )}
           </Link>
 
+          {/* Language */}
+          <div className="hidden md:block">
+            <select
+              value={lang}
+              onChange={(e) => setLang(e.target.value)}
+              className={`text-xs rounded-full border px-2.5 py-1 bg-transparent transition-colors ${
+                light ? 'border-cream/40 text-cream/90' : 'border-sand-300 text-warm-brown'
+              }`}
+            >
+              {Object.entries(languages).map(([code, label]) => (
+                <option key={code} value={code} className="text-forest-700">
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* User */}
           {user ? (
             <div className="relative">
@@ -90,12 +109,12 @@ export default function Navbar() {
                   {isAdmin && (
                     <Link to="/admin" onClick={() => setDropOpen(false)}
                       className="flex items-center gap-2 px-4 py-3 text-sm text-warm-brown hover:bg-ivory hover:text-terra-500 transition-colors">
-                      <Settings size={15} /> Admin Panel
+                      <Settings size={15} /> {t('nav.admin')}
                     </Link>
                   )}
                   <button onClick={handleLogout}
                     className="flex items-center gap-2 w-full px-4 py-3 text-sm text-warm-brown hover:bg-ivory hover:text-terra-500 transition-colors">
-                    <LogOut size={15} /> Sign out
+                    <LogOut size={15} /> {t('nav.signOut')}
                   </button>
                 </div>
               )}
@@ -103,7 +122,7 @@ export default function Navbar() {
           ) : (
             <Link to="/login"
               className={`hidden md:inline text-sm font-medium tracking-wide transition-colors ${light ? 'text-cream/90 hover:text-cream' : 'text-warm-brown hover:text-terra-500'}`}>
-              Sign In
+              {t('nav.signIn')}
             </Link>
           )}
 
@@ -126,13 +145,24 @@ export default function Navbar() {
                 `font-sans text-sm tracking-widest uppercase ${isActive ? 'text-terra-500' : 'text-warm-brown'}`
               }>{label}</NavLink>
           ))}
+          <div className="pt-2">
+            <select
+              value={lang}
+              onChange={(e) => setLang(e.target.value)}
+              className="text-xs rounded-full border px-3 py-1 bg-white border-sand-300 text-warm-brown"
+            >
+              {Object.entries(languages).map(([code, label]) => (
+                <option key={code} value={code}>{label}</option>
+              ))}
+            </select>
+          </div>
           {user ? (
             <>
-              {isAdmin && <Link to="/admin" onClick={() => setOpen(false)} className="text-sm text-forest-600 font-medium">Admin Panel</Link>}
-              <button onClick={() => { handleLogout(); setOpen(false); }} className="text-sm text-left text-warm-brown">Sign out</button>
+              {isAdmin && <Link to="/admin" onClick={() => setOpen(false)} className="text-sm text-forest-600 font-medium">{t('nav.admin')}</Link>}
+              <button onClick={() => { handleLogout(); setOpen(false); }} className="text-sm text-left text-warm-brown">{t('nav.signOut')}</button>
             </>
           ) : (
-            <Link to="/login" onClick={() => setOpen(false)} className="text-sm text-warm-brown">Sign In</Link>
+            <Link to="/login" onClick={() => setOpen(false)} className="text-sm text-warm-brown">{t('nav.signIn')}</Link>
           )}
         </div>
       )}
