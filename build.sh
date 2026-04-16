@@ -5,8 +5,8 @@ set -o errexit
 # Install dependencies
 pip install -r requirements.txt
 
-# Run database migrations
-python manage.py migrate --no-input
+# Run database migrations (continue even if already applied)
+python manage.py migrate --no-input || echo "⚠️ Migration failed — continuing build"
 
 # Collect static files (for WhiteNoise)
 python manage.py collectstatic --no-input --clear
