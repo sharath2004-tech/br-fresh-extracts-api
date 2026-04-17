@@ -1,5 +1,4 @@
 import bcrypt from 'bcryptjs';
-import { firebaseAdmin } from '../config/firebase.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../config/jwt.js';
 import User from '../models/User.js';
 
@@ -56,71 +55,53 @@ export async function login(req, res, next) {
   }
 }
 
-export async function register(req, res, next) {
+// Verify MSG91 OTP widget access-token, find-or-create user, return app JWT
+export async function verifyOtpWidget(req, res, next) {
   try {
-    const { firebase_token, name, password } = req.body || {};
-    if (!firebase_token || !password) {
-      return res.status(400).json({ error: 'Token and password required' });
+    const { access_token, name, email } = req.body || {};
+    if (!access_token) {
+      return res.status(400).json({ error: 'access_token required' });
     }
 
-    const admin = firebaseAdmin();
-    if (!admin.apps?.length) {
-      return res.status(501).json({ error: 'Firebase not configured' });
+    const authKey = process.env.MSG91_AUTH_KEY;
+    if (!authKey) {
+      return res.status(500).json({ error: 'MSG91_AUTH_KEY is not configured on the server.' });
     }
 
-    const decoded = await admin.auth().verifyIdToken(firebase_token);
-    const phone_number = decoded.phone_number;
-    if (!phone_number) return res.status(401).json({ error: 'Invalid Firebase token: No phone found.' });
-
-    const existing = await findUserByPhone(phone_number);
-    if (existing) return res.status(400).json({ error: 'User already exists.' });
-
-    const password_hash = await bcrypt.hash(password, 10);
-    const user = await User.create({
-      phone_number,
-      name: name || 'Customer',
-      password_hash,
-      is_profile_complete: true,
+    const msg91Res = await fetch('https://control.msg91.com/api/v5/widget/verifyAccessToken', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ authkey: authKey, 'access-token': access_token }),
     });
+
+    const msg91Data = await msg91Res.json();
+    if (msg91Data.type !== 'success') {
+      return res.status(401).json({ error: msg91Data.message || 'OTP verification failed.' });
+    }
+
+    const mobile = msg91Data.data?.mobile || msg91Data.mobile;
+    if (!mobile) {
+      return res.status(401).json({ error: 'Could not retrieve mobile number from OTP response.' });
+    }
+
+    const phone_number = mobile.startsWith('+') ? mobile : `+${mobile}`;
+
+    let user = await findUserByPhone(phone_number);
+    if (!user) {
+      user = await User.create({
+        phone_number,
+        name: name?.trim() || 'Customer',
+        email: email?.trim() || '',
+        is_profile_complete: !!(name?.trim()),
+      });
+    }
 
     const tokens = {
       access: signAccessToken({ user_id: user.id, phone_number: user.phone_number, name: user.name }),
       refresh: signRefreshToken({ user_id: user.id, phone_number: user.phone_number }),
     };
 
-    res.status(201).json({
-      message: 'Account created!',
-      tokens,
-      user: normalizeUser(user),
-    });
-  } catch (err) {
-    next(err);
-  }
-}
-
-export async function resetPassword(req, res, next) {
-  try {
-    const { firebase_token, new_password } = req.body || {};
-    if (!firebase_token || !new_password) {
-      return res.status(400).json({ error: 'Token and password required' });
-    }
-
-    const admin = firebaseAdmin();
-    if (!admin.apps?.length) {
-      return res.status(501).json({ error: 'Firebase not configured' });
-    }
-
-    const decoded = await admin.auth().verifyIdToken(firebase_token);
-    const phone_number = decoded.phone_number;
-    if (!phone_number) return res.status(401).json({ error: 'Invalid Firebase token: No phone found.' });
-
-    const user = await findUserByPhone(phone_number);
-    if (!user) return res.status(404).json({ error: 'User not found.' });
-
-    user.password_hash = await bcrypt.hash(new_password, 10);
-    await user.save();
-
-    res.json({ message: 'Password reset successfully.' });
+    return res.json({ tokens, user: normalizeUser(user) });
   } catch (err) {
     next(err);
   }

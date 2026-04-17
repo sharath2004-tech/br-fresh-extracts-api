@@ -1,65 +1,97 @@
 import { Eye, EyeOff, Leaf } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 
+const MSG91_WIDGET_ID = import.meta.env.VITE_MSG91_WIDGET_ID || '';
+const WIDGET_SCRIPT = 'https://control.msg91.com/app/assets/otp-provider/otp-provider.js';
+
 export default function LoginPage() {
   const [mode, setMode] = useState('customer');
   const [isLogin, setIsLogin] = useState(true);
-  const [form, setForm] = useState({ name: '', phone: '', email: '', password: '' });
-  const [otp, setOtp] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
+  const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [error, setError] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { loginAdmin, sendOtp, verifyOtp, user, isFirebaseConfigured } = useAuth();
+  const widgetRef = useRef(null);
+  const scriptLoadedRef = useRef(false);
+
+  const { loginAdmin, verifyMsg91Token, user } = useAuth();
   const { t, tr } = useLanguage();
   const navigate = useNavigate();
 
   if (user) { navigate('/'); return null; }
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const resetOtp = () => { setOtp(''); setOtpSent(false); };
 
-  const handleSubmit = async (e) => {
+  // Load MSG91 widget when in customer mode
+  useEffect(() => {
+    if (mode !== 'customer') return;
+    if (!MSG91_WIDGET_ID) return;
+
+    const initWidget = () => {
+      if (!window.CheckWidgetService) return;
+      try { widgetRef.current?.destroy?.(); } catch { /* ignore */ }
+      const config = {
+        widgetId: MSG91_WIDGET_ID,
+        success: async (data) => {
+          const token = data?.['access-token'] || data?.message || data?.token;
+          if (!token) {
+            setError('OTP verification failed. No token received.');
+            return;
+          }
+          setLoading(true);
+          const result = await verifyMsg91Token(token, { name: form.name, email: form.email });
+          setLoading(false);
+          if (result.success) {
+            navigate('/');
+          } else {
+            setError(result.error);
+          }
+        },
+        failure: () => {
+          setError('OTP verification failed. Please try again.');
+        },
+      };
+      widgetRef.current = new window.CheckWidgetService(config);
+      widgetRef.current.renderWidget();
+    };
+
+    if (window.CheckWidgetService) {
+      initWidget();
+      return;
+    }
+
+    if (scriptLoadedRef.current) return;
+    scriptLoadedRef.current = true;
+
+    const existingScript = document.getElementById('msg91-widget-script');
+    if (existingScript) {
+      existingScript.addEventListener('load', initWidget);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'msg91-widget-script';
+    script.src = WIDGET_SCRIPT;
+    script.async = true;
+    script.onload = initWidget;
+    document.body.appendChild(script);
+
+    return () => {
+      try { widgetRef.current?.destroy?.(); } catch { /* ignore */ }
+    };
+  }, [mode]);
+
+  const handleAdminSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-    await new Promise(r => setTimeout(r, 400)); // Small UX delay
-
-    if (mode === 'admin') {
-      const result = await loginAdmin(form.email, form.password);
-      setLoading(false);
-      if (result.success) {
-        navigate('/admin');
-      } else {
-        setError(result.error);
-      }
-      return;
-    }
-
-    if (!isFirebaseConfigured) {
-      setLoading(false);
-      setError(t('login.firebaseMissing'));
-      return;
-    }
-
-    if (!otpSent) {
-      const result = await sendOtp(form.phone, 'recaptcha-container');
-      setLoading(false);
-      if (result.success) {
-        setOtpSent(true);
-      } else {
-        setError(result.error);
-      }
-      return;
-    }
-
-    const result = await verifyOtp(otp, { name: isLogin ? '' : form.name, email: form.email, phone: form.phone });
+    const result = await loginAdmin(form.email, form.password);
     setLoading(false);
     if (result.success) {
-      navigate('/');
+      navigate('/admin');
     } else {
       setError(result.error);
     }
@@ -104,10 +136,12 @@ export default function LoginPage() {
                 : (isLogin ? t('login.signInSub') : t('login.signUpSub'))}
             </p>
           </div>
+
+          {/* Tab switcher */}
           <div className="mb-5 grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => { setMode('customer'); resetOtp(); setError(''); }}
+              onClick={() => { setMode('customer'); setError(''); }}
               className={`px-3 py-2 rounded-xl text-sm font-semibold border ${
                 mode === 'customer'
                   ? 'bg-terra-500 text-white border-terra-500'
@@ -118,7 +152,7 @@ export default function LoginPage() {
             </button>
             <button
               type="button"
-              onClick={() => { setMode('admin'); resetOtp(); setError(''); }}
+              onClick={() => { setMode('admin'); setError(''); }}
               className={`px-3 py-2 rounded-xl text-sm font-semibold border ${
                 mode === 'admin'
                   ? 'bg-forest-600 text-white border-forest-600'
@@ -129,101 +163,79 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === 'customer' && !isLogin && (
-              <div>
-                <label className="label">{t('login.fullName')}</label>
-                <input className="input-field" type="text" placeholder={t('login.namePlaceholder')} required
-                  value={form.name} onChange={e => set('name', e.target.value)} />
-              </div>
-            )}
-
-            {mode === 'customer' && (
-              <div>
-                <label className="label">{t('login.phone')}</label>
-                <input className="input-field" type="tel" placeholder={t('login.phonePlaceholder')} required
-                  value={form.phone} onChange={e => set('phone', e.target.value)} />
-              </div>
-            )}
-
-            {mode === 'customer' && !isLogin && (
-              <div>
-                <label className="label">{t('login.emailOptional')}</label>
-                <input className="input-field" type="email" placeholder={t('login.emailPlaceholder')}
-                  value={form.email} onChange={e => set('email', e.target.value)} />
-              </div>
-            )}
-
-            {mode === 'customer' && otpSent && (
-              <div>
-                <label className="label">{t('login.otpLabel')}</label>
-                <input className="input-field" type="text" inputMode="numeric" placeholder={t('login.otpPlaceholder')} required
-                  value={otp} onChange={e => setOtp(e.target.value)} />
-                <button type="button" onClick={async () => {
-                  setError('');
-                  setLoading(true);
-                  const result = await sendOtp(form.phone, 'recaptcha-container');
-                  setLoading(false);
-                  if (!result.success) setError(result.error);
-                }}
-                  className="text-xs text-terra-500 hover:underline mt-2">
-                  {t('login.resendOtp')}
-                </button>
-              </div>
-            )}
-
-            {mode === 'admin' && (
-              <>
+          {/* Customer mode: optional profile fields + MSG91 widget */}
+          {mode === 'customer' && (
+            <div className="space-y-4">
+              {!isLogin && (
                 <div>
-                  <label className="label">{t('login.adminEmail')}</label>
-                  <input className="input-field" type="email" placeholder={t('login.adminEmailPlaceholder')} required
+                  <label className="label">{t('login.fullName')}</label>
+                  <input className="input-field" type="text" placeholder={t('login.namePlaceholder')}
+                    value={form.name} onChange={e => set('name', e.target.value)} />
+                </div>
+              )}
+              {!isLogin && (
+                <div>
+                  <label className="label">{t('login.emailOptional')}</label>
+                  <input className="input-field" type="email" placeholder={t('login.emailPlaceholder')}
                     value={form.email} onChange={e => set('email', e.target.value)} />
                 </div>
-                <div>
-                  <label className="label">{t('login.adminPassword')}</label>
-                  <div className="relative">
-                    <input className="input-field pr-10" type={showPass ? 'text' : 'password'} placeholder={t('login.passwordPlaceholder')} required
-                      value={form.password} onChange={e => set('password', e.target.value)} />
-                    <button type="button" onClick={() => setShowPass(!showPass)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-warm-brown/40 hover:text-warm-brown">
-                      {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {error && <p className="text-red-500 text-sm bg-red-50 px-4 py-2.5 rounded-lg">{tr(error)}</p>}
-
-            <button type="submit" disabled={loading}
-              className="btn-primary w-full text-center flex items-center justify-center gap-2 mt-2">
-              {loading ? (
-                <span className="inline-block w-4 h-4 border-2 border-cream/30 border-t-cream rounded-full animate-spin" />
-              ) : (
-                mode === 'admin'
-                  ? t('login.adminSignIn')
-                  : (otpSent ? t('login.verifyOtp') : t('login.sendOtp'))
               )}
-            </button>
 
-            {mode === 'customer' && !isFirebaseConfigured && (
-              <p className="text-xs text-amber-700 bg-amber-50 px-4 py-2 rounded-lg">
-                {t('login.firebaseMissing')}
+              {!MSG91_WIDGET_ID && (
+                <p className="text-xs text-amber-700 bg-amber-50 px-4 py-2 rounded-lg">
+                  MSG91 Widget ID not configured. Set <code>VITE_MSG91_WIDGET_ID</code> in your environment.
+                </p>
+              )}
+
+              {/* MSG91 widget renders here */}
+              <div id="msg91-otp-widget" className="min-h-[120px]" />
+
+              {error && <p className="text-red-500 text-sm bg-red-50 px-4 py-2.5 rounded-lg">{tr(error)}</p>}
+              {loading && (
+                <div className="flex justify-center">
+                  <span className="inline-block w-5 h-5 border-2 border-terra-300 border-t-terra-600 rounded-full animate-spin" />
+                </div>
+              )}
+
+              <p className="mt-6 text-center text-sm text-warm-brown/60">
+                {isLogin ? t('login.noAccount') : t('login.haveAccount')}
+                <button onClick={() => { setIsLogin(!isLogin); setError(''); }}
+                  className="text-terra-500 hover:underline font-medium ml-1">
+                  {isLogin ? t('login.signUpLink') : t('login.signInLink')}
+                </button>
               </p>
-            )}
+            </div>
+          )}
 
-            {/* reCAPTCHA must be in DOM but invisible — do NOT use display:none */}
-            <div id="recaptcha-container" style={{ position: 'absolute', bottom: 0, left: '-9999px', height: 0, overflow: 'hidden' }} />
-          </form>
+          {/* Admin mode */}
+          {mode === 'admin' && (
+            <form onSubmit={handleAdminSubmit} className="space-y-4">
+              <div>
+                <label className="label">{t('login.adminEmail')}</label>
+                <input className="input-field" type="email" placeholder={t('login.adminEmailPlaceholder')} required
+                  value={form.email} onChange={e => set('email', e.target.value)} />
+              </div>
+              <div>
+                <label className="label">{t('login.adminPassword')}</label>
+                <div className="relative">
+                  <input className="input-field pr-10" type={showPass ? 'text' : 'password'} placeholder={t('login.passwordPlaceholder')} required
+                    value={form.password} onChange={e => set('password', e.target.value)} />
+                  <button type="button" onClick={() => setShowPass(!showPass)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-warm-brown/40 hover:text-warm-brown">
+                    {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
 
-          {mode === 'customer' && (
-            <p className="mt-6 text-center text-sm text-warm-brown/60">
-              {isLogin ? t('login.noAccount') : t('login.haveAccount')}
-              <button onClick={() => { setIsLogin(!isLogin); setError(''); resetOtp(); }}
-                className="text-terra-500 hover:underline font-medium">
-                {isLogin ? t('login.signUpLink') : t('login.signInLink')}
+              {error && <p className="text-red-500 text-sm bg-red-50 px-4 py-2.5 rounded-lg">{tr(error)}</p>}
+
+              <button type="submit" disabled={loading}
+                className="btn-primary w-full text-center flex items-center justify-center gap-2 mt-2">
+                {loading ? (
+                  <span className="inline-block w-4 h-4 border-2 border-cream/30 border-t-cream rounded-full animate-spin" />
+                ) : t('login.adminSignIn')}
               </button>
-            </p>
+            </form>
           )}
         </div>
       </div>

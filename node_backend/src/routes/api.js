@@ -6,8 +6,7 @@ import {
     login,
     profile,
     refreshToken,
-    register,
-    resetPassword,
+    verifyOtpWidget,
 } from '../controllers/authController.js';
 import {
     createCategory,
@@ -69,11 +68,10 @@ router.post('/upload/', requireSecret, upload.single('file'), uploadImage);
 // Auth
 router.post('/auth/check-user/', checkUser);
 router.post('/auth/login/', login);
-router.post('/auth/register/', register);
+router.post('/auth/verify-otp/', verifyOtpWidget);
 router.get('/auth/profile/', requireJwt, profile);
 router.put('/auth/profile/', requireJwt, profile);
 router.post('/auth/change-password/', requireJwt, changePassword);
-router.post('/auth/reset-password/', resetPassword);
 router.post('/auth/token/refresh/', refreshToken);
 
 // Translation
