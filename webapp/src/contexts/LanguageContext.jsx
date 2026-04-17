@@ -12,7 +12,7 @@ const translations = {
     'nav.signIn': 'Sign In',
     'nav.signOut': 'Sign out',
     'nav.admin': 'Admin Panel',
-    'hero.tagline': '100% Organic · Farm to Table · New Delhi',
+    'hero.tagline': '100% Organic · Farm to Table · Andra Pradesh',
     'hero.viewAll': 'View All Products',
     'hero.cta': 'Shop Now',
     'hero.title': 'Pure from Nature,\nCrafted for You',
