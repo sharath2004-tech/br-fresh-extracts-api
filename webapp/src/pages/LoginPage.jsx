@@ -35,6 +35,7 @@ export default function LoginPage() {
       try { widgetRef.current?.destroy?.(); } catch { /* ignore */ }
       const config = {
         widgetId: MSG91_WIDGET_ID,
+        target: '#msg91-otp-widget',
         success: async (data) => {
           const token = data?.['access-token'] || data?.message || data?.token;
           if (!token) {
