@@ -10,6 +10,7 @@ import CheckoutPage from './pages/CheckoutPage';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import OrdersPage from './pages/OrdersPage';
+import ProductDetailPage from './pages/ProductDetailPage';
 import ShopPage from './pages/ShopPage';
 
 import AdminCategories from './pages/admin/AdminCategories';
@@ -38,6 +39,7 @@ export default function App() {
                   <Route path="cart" element={<CartPage />} />
                   <Route path="checkout" element={<CheckoutPage />} />
                   <Route path="orders" element={<OrdersPage />} />
+                  <Route path="product/:id" element={<ProductDetailPage />} />
                   <Route path="login" element={<LoginPage />} />
                 </Route>
 

@@ -1,6 +1,6 @@
 import { Minus, Plus, Search, ShoppingCart, SlidersHorizontal, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import AnimatedSection from '../components/ui/AnimatedSection';
 import { useCart } from '../contexts/CartContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -23,7 +23,7 @@ function ProductCard({ product }) {
 
   return (
     <div className="group bg-white rounded-2xl overflow-hidden shadow-sm border border-sand-200 card-hover flex flex-col">
-      <div className="relative overflow-hidden h-52">
+      <Link to={`/product/${product.id}`} className="relative overflow-hidden h-52 block">
         <img
           src={product.image}
           alt={product.name}
@@ -35,10 +35,12 @@ function ProductCard({ product }) {
             {t('shop.bestseller')}
           </span>
         )}
-      </div>
+      </Link>
       <div className="p-5 flex flex-col flex-1">
         <p className="text-xs text-terra-500 font-medium mb-1 tracking-wide">{tr(product.category)}</p>
-        <h3 className="font-serif text-lg text-forest-700 mb-1 leading-tight">{tr(product.name)}</h3>
+        <Link to={`/product/${product.id}`} className="hover:text-terra-500 transition-colors">
+          <h3 className="font-serif text-lg text-forest-700 mb-1 leading-tight">{tr(product.name)}</h3>
+        </Link>
         <p className="text-xs text-warm-brown/60 mb-3 line-clamp-2">{tr(product.description)}</p>
 
         {/* Variant selector */}
