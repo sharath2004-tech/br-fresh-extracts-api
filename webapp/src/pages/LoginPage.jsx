@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 
 const MSG91_WIDGET_ID = import.meta.env.VITE_MSG91_WIDGET_ID || '';
+const MSG91_TOKEN_AUTH = import.meta.env.VITE_MSG91_TOKEN_AUTH || '';
 
 export default function LoginPage() {
   const [mode, setMode] = useState('customer');
@@ -28,6 +29,7 @@ export default function LoginPage() {
 
     const configuration = {
       widgetId: MSG91_WIDGET_ID,
+      tokenAuth: MSG91_TOKEN_AUTH,
       success: async (data) => {
         const token = data?.['access-token'] || data?.token || data?.message;
         if (!token) {
