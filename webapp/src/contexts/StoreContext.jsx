@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 
+const UPLOAD_SECRET = import.meta.env.VITE_UPLOAD_SECRET || '';
+
 const defaultData = {
   settings: {
     whatsappNumber: '916305352434',
@@ -56,6 +58,23 @@ const StoreContext = createContext(null);
 const _rawApi = import.meta.env.VITE_API_URL || '/api/';
 const API_URL = _rawApi.endsWith('/') ? _rawApi : _rawApi + '/';
 
+function saveStoreSettings(patch) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (UPLOAD_SECRET) headers['X-Upload-Secret'] = UPLOAD_SECRET;
+  fetch(`${API_URL}admin/store-settings/`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(patch),
+  }).catch(err => console.warn('Failed to sync store settings to server:', err));
+}
+
+function normalizeSettings(s) {
+  const merged = { ...defaultData.settings, ...(s || {}) };
+  if (merged.shippingCharge !== undefined) merged.shippingCharge = Number(merged.shippingCharge);
+  if (merged.freeShippingAbove !== undefined) merged.freeShippingAbove = Number(merged.freeShippingAbove);
+  return merged;
+}
+
 function load() {
   try {
     const s = localStorage.getItem('so_store');
@@ -80,14 +99,21 @@ function load() {
 export function StoreProvider({ children }) {
   const [store, setStore] = useState(load);
 
-  // Fetch categories and products from the live API and merge them in
+  // Fetch categories, products, and store settings from the live API
   useEffect(() => {
     Promise.all([
       fetch(`${API_URL}categories/`).then(r => r.ok ? r.json() : []),
       fetch(`${API_URL}products/`).then(r => r.ok ? r.json() : []),
-    ]).then(([cats, prods]) => {
+      fetch(`${API_URL}store-settings/`).then(r => r.ok ? r.json() : null),
+    ]).then(([cats, prods, storeSettings]) => {
       setStore(prev => ({
         ...prev,
+        ...(storeSettings ? {
+          hero: { ...defaultData.hero, ...storeSettings.hero },
+          settings: normalizeSettings(storeSettings.settings),
+          testimonials: storeSettings.testimonials?.length ? storeSettings.testimonials : prev.testimonials,
+          whyUs: storeSettings.whyUs?.length ? storeSettings.whyUs : prev.whyUs,
+        } : {}),
         categories: cats.length ? cats.map(c => ({
           id: String(c.id),
           name: c.name,
@@ -124,33 +150,97 @@ export function StoreProvider({ children }) {
     });
   };
 
-  // Hero
-  const updateHero = (patch) => update(p => ({ ...p, hero: { ...p.hero, ...patch } }));
+  // Hero — persisted to backend
+  const updateHero = (patch) => {
+    setStore(prev => {
+      const newHero = { ...prev.hero, ...patch };
+      const next = { ...prev, hero: newHero };
+      try { localStorage.setItem('so_store', JSON.stringify(next)); } catch {}
+      saveStoreSettings({ hero: newHero });
+      return next;
+    });
+  };
 
-  // Settings
-  const updateSettings = (patch) => update(p => ({ ...p, settings: { ...p.settings, ...patch } }));
+  // Settings — persisted to backend
+  const updateSettings = (patch) => {
+    setStore(prev => {
+      const newSettings = { ...prev.settings, ...patch };
+      const next = { ...prev, settings: newSettings };
+      try { localStorage.setItem('so_store', JSON.stringify(next)); } catch {}
+      saveStoreSettings({ settings: newSettings });
+      return next;
+    });
+  };
 
-  // Categories
-  const addCategory = (c)    => update(p => ({ ...p, categories: [...p.categories, { ...c, id: `cat_${Date.now()}` }] }));
+  // Categories (managed via their own API routes)
+  const addCategory    = (c)         => update(p => ({ ...p, categories: [...p.categories, { ...c, id: `cat_${Date.now()}` }] }));
   const updateCategory = (id, patch) => update(p => ({ ...p, categories: p.categories.map(c => c.id === id ? { ...c, ...patch } : c) }));
-  const deleteCategory = (id) => update(p => ({ ...p, categories: p.categories.filter(c => c.id !== id) }));
+  const deleteCategory = (id)        => update(p => ({ ...p, categories: p.categories.filter(c => c.id !== id) }));
 
-  // Products
-  const addProduct    = (pr) => update(p => ({ ...p, products: [...p.products, { ...pr, id: `p_${Date.now()}` }] }));
-  const updateProduct = (id, patch) => update(p => ({ ...p, products: p.products.map(pr => pr.id === id ? { ...pr, ...patch } : pr) }));
-  const deleteProduct = (id) => update(p => ({ ...p, products: p.products.filter(pr => pr.id !== id) }));
+  // Products (managed via their own API routes)
+  const addProduct    = (pr)         => update(p => ({ ...p, products: [...p.products, { ...pr, id: `p_${Date.now()}` }] }));
+  const updateProduct = (id, patch)  => update(p => ({ ...p, products: p.products.map(pr => pr.id === id ? { ...pr, ...patch } : pr) }));
+  const deleteProduct = (id)         => update(p => ({ ...p, products: p.products.filter(pr => pr.id !== id) }));
 
-  // Testimonials
-  const addTestimonial    = (t)  => update(p => ({ ...p, testimonials: [...p.testimonials, { ...t, id: `t_${Date.now()}` }] }));
-  const updateTestimonial = (id, patch) => update(p => ({ ...p, testimonials: p.testimonials.map(t => t.id === id ? { ...t, ...patch } : t) }));
-  const deleteTestimonial = (id) => update(p => ({ ...p, testimonials: p.testimonials.filter(t => t.id !== id) }));
+  // Testimonials — persisted to backend
+  const addTestimonial = (t) => {
+    setStore(prev => {
+      const newTestimonials = [...prev.testimonials, { ...t, id: `t_${Date.now()}` }];
+      const next = { ...prev, testimonials: newTestimonials };
+      try { localStorage.setItem('so_store', JSON.stringify(next)); } catch {}
+      saveStoreSettings({ testimonials: newTestimonials });
+      return next;
+    });
+  };
+  const updateTestimonial = (id, patch) => {
+    setStore(prev => {
+      const newTestimonials = prev.testimonials.map(t => t.id === id ? { ...t, ...patch } : t);
+      const next = { ...prev, testimonials: newTestimonials };
+      try { localStorage.setItem('so_store', JSON.stringify(next)); } catch {}
+      saveStoreSettings({ testimonials: newTestimonials });
+      return next;
+    });
+  };
+  const deleteTestimonial = (id) => {
+    setStore(prev => {
+      const newTestimonials = prev.testimonials.filter(t => t.id !== id);
+      const next = { ...prev, testimonials: newTestimonials };
+      try { localStorage.setItem('so_store', JSON.stringify(next)); } catch {}
+      saveStoreSettings({ testimonials: newTestimonials });
+      return next;
+    });
+  };
 
-  // WhyUs
-  const addWhyUs    = (w)  => update(p => ({ ...p, whyUs: [...p.whyUs, { ...w, id: `w_${Date.now()}` }] }));
-  const updateWhyUs = (id, patch) => update(p => ({ ...p, whyUs: p.whyUs.map(w => w.id === id ? { ...w, ...patch } : w) }));
-  const deleteWhyUs = (id) => update(p => ({ ...p, whyUs: p.whyUs.filter(w => w.id !== id) }));
+  // WhyUs — persisted to backend
+  const addWhyUs = (w) => {
+    setStore(prev => {
+      const newWhyUs = [...prev.whyUs, { ...w, id: `w_${Date.now()}` }];
+      const next = { ...prev, whyUs: newWhyUs };
+      try { localStorage.setItem('so_store', JSON.stringify(next)); } catch {}
+      saveStoreSettings({ whyUs: newWhyUs });
+      return next;
+    });
+  };
+  const updateWhyUs = (id, patch) => {
+    setStore(prev => {
+      const newWhyUs = prev.whyUs.map(w => w.id === id ? { ...w, ...patch } : w);
+      const next = { ...prev, whyUs: newWhyUs };
+      try { localStorage.setItem('so_store', JSON.stringify(next)); } catch {}
+      saveStoreSettings({ whyUs: newWhyUs });
+      return next;
+    });
+  };
+  const deleteWhyUs = (id) => {
+    setStore(prev => {
+      const newWhyUs = prev.whyUs.filter(w => w.id !== id);
+      const next = { ...prev, whyUs: newWhyUs };
+      try { localStorage.setItem('so_store', JSON.stringify(next)); } catch {}
+      saveStoreSettings({ whyUs: newWhyUs });
+      return next;
+    });
+  };
 
-  const resetStore  = () => { localStorage.removeItem('so_store'); setStore(defaultData); };
+  const resetStore = () => { localStorage.removeItem('so_store'); setStore(defaultData); };
 
   return (
     <StoreContext.Provider value={{

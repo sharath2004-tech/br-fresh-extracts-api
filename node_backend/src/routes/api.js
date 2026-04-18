@@ -29,6 +29,7 @@ import {
     listPublicProducts,
     updateProduct,
 } from '../controllers/productsController.js';
+import { getStoreSettings, updateStoreSettings } from '../controllers/storeSettingsController.js';
 import { translateText } from '../controllers/translateController.js';
 import { uploadImage } from '../controllers/uploadController.js';
 import { requireJwt } from '../middleware/requireJwt.js';
@@ -40,6 +41,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 *
 // Public endpoints
 router.get('/products/', listPublicProducts);
 router.get('/categories/', listCategories);
+router.get('/store-settings/', getStoreSettings);
 
 // Orders (JWT)
 router.get('/orders/', requireJwt, listUserOrders);
@@ -49,6 +51,9 @@ router.post('/orders/', requireJwt, createOrder);
 router.get('/admin/analytics/', requireSecret, adminAnalytics);
 router.get('/admin/orders/', requireSecret, listAdminOrders);
 router.put('/admin/orders/:id/', requireSecret, updateAdminOrder);
+
+// Admin store settings
+router.put('/admin/store-settings/', requireSecret, updateStoreSettings);
 
 // Admin category CRUD
 router.get('/admin/categories/', requireSecret, listAdminCategories);
