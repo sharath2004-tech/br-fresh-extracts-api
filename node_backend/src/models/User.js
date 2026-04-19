@@ -11,6 +11,7 @@ const UserSchema = new mongoose.Schema({
   is_active: { type: Boolean, default: true },
   is_staff: { type: Boolean, default: false },
   cart: { type: mongoose.Schema.Types.Mixed, default: [] },
+  fcm_tokens: { type: [String], default: [] },
 }, { timestamps: true });
 
 UserSchema.set('toJSON', {

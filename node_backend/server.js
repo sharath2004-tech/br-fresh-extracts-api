@@ -49,6 +49,10 @@ const defaultOrigins = [
   'https://br-fresh-extracts-webapp.onrender.com',
   'https://www.brfreshextracts.co.in',
   'https://brfreshextracts.co.in',
+  // Capacitor Android WebView origins
+  'capacitor://localhost',
+  'https://localhost',
+  'http://localhost',
 ];
 
 app.use(cors({

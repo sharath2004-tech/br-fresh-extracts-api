@@ -9,6 +9,7 @@ import {
     profile,
     refreshToken,
     saveCart,
+    saveFcmToken,
     verifyOtpWidget,
 } from '../controllers/authController.js';
 import {
@@ -96,6 +97,7 @@ router.post('/auth/change-password/', requireJwt, changePassword);
 router.post('/auth/token/refresh/', refreshToken);
 router.get('/auth/cart/', requireJwt, getCart);
 router.put('/auth/cart/', requireJwt, saveCart);
+router.post('/auth/fcm-token/', requireJwt, saveFcmToken);
 
 // Translation
 router.post('/translate/', translateText);

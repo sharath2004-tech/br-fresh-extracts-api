@@ -229,3 +229,20 @@ export async function saveCart(req, res, next) {
     res.json({ cart: sanitized });
   } catch (err) { next(err); }
 }
+
+// POST /auth/fcm-token/ — register or refresh device push notification token
+export async function saveFcmToken(req, res, next) {
+  try {
+    const userId = req.jwtUser?.user_id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { token } = req.body || {};
+    if (!token || typeof token !== 'string') {
+      return res.status(400).json({ error: 'token is required' });
+    }
+    // Add token only if not already stored (avoid duplicates)
+    await User.findByIdAndUpdate(userId, {
+      $addToSet: { fcm_tokens: token },
+    });
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+}

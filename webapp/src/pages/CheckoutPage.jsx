@@ -7,6 +7,16 @@ import { useCart } from '../contexts/CartContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useStore } from '../contexts/StoreContext';
 
+// Open URLs natively on Android (Capacitor), fall back to window.open on web
+async function openUrl(url) {
+  try {
+    const { Browser } = await import('@capacitor/browser');
+    await Browser.open({ url });
+  } catch {
+    window.open(url, '_blank');
+  }
+}
+
 const _rawApi = import.meta.env.VITE_API_URL || '/api/';
 const API_URL = _rawApi.endsWith('/') ? _rawApi : _rawApi + '/';
 const UPLOAD_SECRET = import.meta.env.VITE_UPLOAD_SECRET || '';
@@ -286,7 +296,7 @@ export default function CheckoutPage() {
         }
       }
       // Fallback: text link + auto-download screenshot
-      window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
+      await openUrl(`https://wa.me/${whatsapp}?text=${encodeURIComponent(msg)}`);
       if (paymentPreview) {
         const dlLink = document.createElement('a');
         dlLink.href = paymentPreview;
@@ -295,7 +305,7 @@ export default function CheckoutPage() {
       }
     } else {
       // COD: just send text to WhatsApp
-      window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
+      await openUrl(`https://wa.me/${whatsapp}?text=${encodeURIComponent(msg)}`);
     }
 
     clearCart();

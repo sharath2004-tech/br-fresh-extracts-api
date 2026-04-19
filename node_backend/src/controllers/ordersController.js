@@ -1,3 +1,4 @@
+import { sendPushNotification } from '../config/firebase.js';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import User from '../models/User.js';
@@ -133,6 +134,20 @@ export async function updateAdminOrder(req, res, next) {
     }
     const order = await Order.findByIdAndUpdate(req.params.id, update, { new: true });
     if (!order) return res.status(404).json({ error: 'Not found.' });
+
+    // Fire push notification if status changed
+    if (update.status && order.user_id) {
+      const statusMessages = {
+        Confirmed: 'Your order has been confirmed! 🎉',
+        Packed:    'Your order is packed and ready to ship! 📦',
+        Shipped:   'Your order is on the way! 🚚',
+        Delivered: 'Your order has been delivered. Enjoy! 🌿',
+        Cancelled: 'Your order has been cancelled.',
+      };
+      const body = statusMessages[update.status] || `Order status: ${update.status}`;
+      sendPushNotification(order.user_id, 'BR Fresh Extracts — Order Update', body);
+    }
+
     res.json(normalizeOrder(order));
   } catch (err) {
     next(err);

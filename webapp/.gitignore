@@ -12,6 +12,13 @@ dist
 dist-ssr
 *.local
 
+# Capacitor Android build outputs (keep source, ignore generated/build files)
+android/.gradle
+android/app/build
+android/build
+android/.idea
+.env.production
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

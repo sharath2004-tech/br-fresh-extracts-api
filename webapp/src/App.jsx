@@ -38,6 +38,48 @@ function CartSyncBridge() {
   return null;
 }
 
+// Bridge: registers FCM push token on Android (Capacitor) when user logs in
+const _rawApi = import.meta.env.VITE_API_URL || '/api/';
+const _API_URL = _rawApi.endsWith('/') ? _rawApi : _rawApi + '/';
+
+function PushBridge() {
+  const { user, getValidToken } = useAuth();
+  useEffect(() => {
+    if (user?.role !== 'customer') return;
+    (async () => {
+      try {
+        const { PushNotifications } = await import('@capacitor/push-notifications');
+        const { Capacitor } = await import('@capacitor/core');
+        if (!Capacitor.isNativePlatform()) return;
+
+        const perm = await PushNotifications.requestPermissions();
+        if (perm.receive !== 'granted') return;
+
+        await PushNotifications.register();
+
+        PushNotifications.addListener('registration', async ({ value: fcmToken }) => {
+          try {
+            const token = await getValidToken();
+            if (!token) return;
+            await fetch(`${_API_URL}auth/fcm-token/`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ token: fcmToken }),
+            });
+          } catch { /* non-critical */ }
+        });
+
+        PushNotifications.addListener('pushNotificationReceived', notification => {
+          // Show a simple in-app toast for foreground notifications
+          const event = new CustomEvent('fcm:notification', { detail: notification });
+          window.dispatchEvent(event);
+        });
+      } catch { /* not on Android / Capacitor not available */ }
+    })();
+  }, [user?.tokens?.access]);
+  return null;
+}
+
 export default function App() {
   return (
     <Router>
@@ -46,6 +88,7 @@ export default function App() {
           <StoreProvider>
             <CartProvider>
               <CartSyncBridge />
+              <PushBridge />
               <Routes>
                 {/* Public routes with Navbar + Footer */}
                 <Route element={<MainLayout />}>
