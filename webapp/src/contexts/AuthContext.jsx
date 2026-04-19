@@ -35,32 +35,35 @@ export function AuthProvider({ children }) {
   };
 
   // Called after MSG91 widget succeeds with an access-token
-  const verifyMsg91Token = async (accessToken, profile = {}) => {
-    if (!accessToken) {
-      return { success: false, error: 'No OTP token received.' };
-    }
+  // On Android native, accessToken is null and preVerifiedData contains {access, refresh, user} from backend
+  const verifyMsg91Token = async (accessToken, profile = {}, preVerifiedData = null) => {
     try {
-      const base = API_URL.endsWith('/') ? API_URL : `${API_URL}/`;
-      const res = await fetch(`${base}auth/verify-otp/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          access_token: accessToken,
-          phone: profile.phone || '',
-          name: profile.name?.trim() || '',
-          email: profile.email?.trim() || '',
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        return { success: false, error: data.error || 'Verification failed. Please try again.' };
+      let data;
+      if (preVerifiedData) {
+        // Native Android: backend already verified OTP and returned JWT tokens directly
+        data = { tokens: { access: preVerifiedData.access, refresh: preVerifiedData.refresh }, user: preVerifiedData.user };
+      } else {
+        if (!accessToken) return { success: false, error: 'No OTP token received.' };
+        const base = API_URL.endsWith('/') ? API_URL : `${API_URL}/`;
+        const res = await fetch(`${base}auth/verify-otp/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            access_token: accessToken,
+            phone: profile?.phone || '',
+            name: profile?.name?.trim() || '',
+            email: profile?.email?.trim() || '',
+          }),
+        });
+        data = await res.json();
+        if (!res.ok) return { success: false, error: data.error || 'Verification failed. Please try again.' };
       }
 
       const u = {
         role: 'customer',
         phone: data.user?.phone_number || '',
         name: data.user?.name || 'Customer',
-        email: data.user?.email || profile.email || '',
+        email: data.user?.email || profile?.email || '',
         tokens: data.tokens,
       };
       setUser(u);

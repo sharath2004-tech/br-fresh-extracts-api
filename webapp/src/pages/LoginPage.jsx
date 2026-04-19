@@ -6,6 +6,12 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 const MSG91_WIDGET_ID = import.meta.env.VITE_MSG91_WIDGET_ID || '';
 const MSG91_TOKEN_AUTH = import.meta.env.VITE_MSG91_TOKEN_AUTH || '';
+const API_URL = (import.meta.env.VITE_API_URL || '/api/').replace(/\/?$/, '/');
+
+// Detect if running inside Capacitor (Android/iOS native app)
+function isNative() {
+  return typeof window !== 'undefined' && window?.Capacitor?.isNativePlatform?.();
+}
 
 export default function LoginPage() {
   const [mode, setMode] = useState('customer');
@@ -60,20 +66,41 @@ export default function LoginPage() {
   };
 
   useEffect(() => {
-    if (mode === 'customer' && MSG91_WIDGET_ID) {
+    if (mode === 'customer' && MSG91_WIDGET_ID && !isNative()) {
       loadScript(initWidget);
     }
   }, [mode]);
 
-  const handleSendOtp = () => {
+  const handleSendOtp = async () => {
     setError('');
     const digits = phone.replace(/\D/g, '');
     if (digits.length < 10) { setError('Enter a valid 10-digit mobile number.'); return; }
     const identifier = digits.length === 10 ? `91${digits}` : digits;
+
+    // On Android: use backend proxy (MSG91 widget CORS blocks capacitor:// origin)
+    if (isNative()) {
+      setLoading(true);
+      try {
+        const r = await fetch(`${API_URL}auth/otp/send/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mobile: identifier }),
+        });
+        const data = await r.json();
+        setLoading(false);
+        if (data.success) { setStep('otp'); setError(''); }
+        else setError(data.error || 'Failed to send OTP. Try again.');
+      } catch (e) {
+        setLoading(false);
+        setError('Network error. Check your connection and try again.');
+      }
+      return;
+    }
+
+    // On web: use MSG91 widget
     const send = () => {
       if (!window.sendOtp) { setError('OTP service not loaded. Please refresh.'); return; }
       setLoading(true);
-      // Timeout fallback: MSG91 widget callbacks may silently fail in Capacitor WebView
       const timeout = setTimeout(() => {
         setLoading(false);
         setError('OTP request timed out. Please check your internet connection and try again.');
@@ -88,9 +115,38 @@ export default function LoginPage() {
     loadScript(() => { initWidget(); setTimeout(send, 300); });
   };
 
-  const handleVerifyOtp = () => {
+  const handleVerifyOtp = async () => {
     setError('');
     if (!otp || otp.length < 4) { setError('Enter the OTP you received.'); return; }
+
+    // On Android: verify via backend proxy
+    if (isNative()) {
+      setLoading(true);
+      try {
+        const digits = phone.replace(/\D/g, '');
+        const identifier = digits.length === 10 ? `91${digits}` : digits;
+        const r = await fetch(`${API_URL}auth/otp/verify/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mobile: identifier, otp, name: form.name, email: form.email }),
+        });
+        const data = await r.json();
+        setLoading(false);
+        if (data.access) {
+          const result = await verifyMsg91Token(null, null, data);
+          if (result.success) navigate('/');
+          else setError(result.error);
+        } else {
+          setError(data.error || 'OTP incorrect. Please try again.');
+        }
+      } catch (e) {
+        setLoading(false);
+        setError('Network error. Check your connection and try again.');
+      }
+      return;
+    }
+
+    // On web: verify via MSG91 widget
     if (!window.verifyOtp) { setError('OTP service not loaded. Please refresh.'); return; }
     setLoading(true);
     window.verifyOtp(
