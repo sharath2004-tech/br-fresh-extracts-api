@@ -25,8 +25,8 @@ export async function createReview(req, res, next) {
 
     const review = await Review.create({
       product_id: productId,
-      user_id:    req.user._id,
-      user_name:  req.user.name || 'Customer',
+      user_id:    req.jwtUser.user_id,
+      user_name:  req.jwtUser.name || 'Customer',
       rating:     ratingNum,
       comment:    String(comment || '').slice(0, 1000),
     });

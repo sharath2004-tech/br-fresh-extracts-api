@@ -34,6 +34,7 @@ function ReviewsSection({ productId, user, getValidToken }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [canReview, setCanReview] = useState(false);
 
   const fetchReviews = async () => {
     try {
@@ -42,11 +43,30 @@ function ReviewsSection({ productId, user, getValidToken }) {
     } finally { setLoading(false); }
   };
 
+  // Check if user has a delivered order containing this product
+  useEffect(() => {
+    if (!user || !productId) return;
+    (async () => {
+      try {
+        const token = await getValidToken();
+        if (!token) return;
+        const res = await fetch(`${API_URL}orders/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const orders = await res.json();
+        const hasDelivered = orders.some(
+          o => o.status === 'Delivered' &&
+               o.items?.some(i => i.product_id === productId)
+        );
+        setCanReview(hasDelivered);
+      } catch { /* non-critical */ }
+    })();
+  }, [user, productId]);
+
   useEffect(() => { if (productId) fetchReviews(); }, [productId]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (rating === 0) return setError('Please select a star rating.');
     setError(''); setSubmitting(true);
     try {
       const token = getValidToken ? await getValidToken() : null;
@@ -75,7 +95,7 @@ function ReviewsSection({ productId, user, getValidToken }) {
         )}
 
         {/* Write a review */}
-        {user && !success && (
+        {user && canReview && !success && (
           <form onSubmit={handleSubmit} className="bg-white border border-sand-200 rounded-2xl p-5 mb-6 shadow-sm">
             <p className="font-medium text-forest-700 text-sm mb-3">Write a Review</p>
             <div className="flex items-center gap-3 mb-3">
@@ -101,6 +121,11 @@ function ReviewsSection({ productId, user, getValidToken }) {
         {!user && (
           <p className="text-sm text-warm-brown/60 mb-6">
             <Link to="/login" className="text-terra-500 hover:underline font-medium">Sign in</Link> to leave a review.
+          </p>
+        )}
+        {user && !canReview && !success && (
+          <p className="text-sm text-warm-brown/50 mb-6">
+            You can write a review after your order is delivered.
           </p>
         )}
         {success && (

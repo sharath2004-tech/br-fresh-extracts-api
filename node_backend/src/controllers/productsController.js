@@ -1,6 +1,6 @@
+import { sendPushToAllUsers } from '../config/firebase.js';
 import Category from '../models/Category.js';
 import Product from '../models/Product.js';
-import { sendPushToAllUsers } from '../config/firebase.js';
 
 function normalizeProduct(p) {
   return {
@@ -70,8 +70,8 @@ export async function createProduct(req, res, next) {
 
     // Broadcast new product to all customers
     sendPushToAllUsers(
-      '🌿 New Product Available!',
-      `${product.name} is now in stock. Check it out!`
+      'New Product Just Arrived!',
+      `We are delighted to introduce ${product.name}. It is now available in our store. We invite you to explore it today!`
     );
 
     res.status(201).json(normalizeProduct(product));

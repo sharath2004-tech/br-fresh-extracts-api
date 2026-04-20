@@ -1,4 +1,4 @@
-import { sendPushNotification, sendPushToAllUsers } from '../config/firebase.js';
+import { sendPushNotification } from '../config/firebase.js';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import User from '../models/User.js';
@@ -26,6 +26,7 @@ function normalizeOrder(o) {
       maps_link: o.customer?.maps_link || '',
     },
     items: (o.items || []).map(i => ({
+      product_id: i.product_id ? String(i.product_id) : null,
       product: i.product || '',
       quantity: i.quantity,
       weight: i.weight || '',
@@ -113,8 +114,8 @@ export async function createOrder(req, res, next) {
     if (user?._id) {
       sendPushNotification(
         user._id,
-        'Order Placed! 🛒',
-        `Your order of ₹${computedTotal} has been received. We'll confirm it shortly.`
+        'Thank You for Your Order!',
+        `We have received your order worth ₹${computedTotal}. Our team will review and confirm it shortly. We appreciate your trust in BR Fresh Extracts.`
       );
     }
 
@@ -147,13 +148,13 @@ export async function updateAdminOrder(req, res, next) {
     // Fire push notification if status changed
     if (update.status && order.user_id) {
       const statusMessages = {
-        Confirmed: 'Your order has been confirmed! 🎉',
-        Packed:    'Your order is packed and ready to ship! 📦',
-        Shipped:   'Your order is on the way! 🚚',
-        Delivered: 'Your order has been delivered. Enjoy! 🌿',
-        Cancelled: 'Your order has been cancelled.',
+        Confirmed: 'Your order has been confirmed. Thank you for your patience — we are preparing it with care.',
+        Packed:    'Great news! Your order has been carefully packed and is ready for dispatch. It will be on its way very soon.',
+        Shipped:   'Your order is on its way! Our delivery partner is heading to you. Thank you for choosing BR Fresh Extracts.',
+        Delivered: 'Your order has been delivered. We hope you enjoy your products. We would love to hear your feedback!',
+        Cancelled: 'We regret to inform you that your order has been cancelled. Please contact us if you have any questions — we are here to help.',
       };
-      const body = statusMessages[update.status] || `Order status: ${update.status}`;
+      const body = statusMessages[update.status] || `Your order status has been updated to: ${update.status}`;
       sendPushNotification(order.user_id, 'BR Fresh Extracts — Order Update', body);
     }
 

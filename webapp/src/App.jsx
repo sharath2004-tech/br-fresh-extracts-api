@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Navigate, Route, BrowserRouter as Router, Routes, useLocation, useNavigate } from 'react-router-dom';
 import AppSplash from './components/ui/AppSplash';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider, useCart } from './contexts/CartContext';
@@ -83,6 +83,46 @@ function PushBridge() {
   return null;
 }
 
+// Bridge: handles Android hardware back button to navigate instead of exit
+function BackButtonHandler() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const lastBackPress = useRef(0);
+
+  useEffect(() => {
+    let listener = null;
+    (async () => {
+      try {
+        const { App } = await import('@capacitor/app');
+        const { Capacitor } = await import('@capacitor/core');
+        if (!Capacitor.isNativePlatform()) return;
+
+        listener = await App.addListener('backButton', () => {
+          // If not on root, go back in history
+          if (location.pathname !== '/') {
+            navigate(-1);
+            return;
+          }
+          // On home page: double-tap to exit
+          const now = Date.now();
+          if (now - lastBackPress.current < 2000) {
+            App.exitApp();
+          } else {
+            lastBackPress.current = now;
+            const event = new CustomEvent('fcm:notification', {
+              detail: { title: 'Exit App', body: 'Press back once more to exit.' },
+            });
+            window.dispatchEvent(event);
+          }
+        });
+      } catch { /* non-critical */ }
+    })();
+    return () => { listener?.remove?.(); };
+  }, [location.pathname]);
+
+  return null;
+}
+
 export default function App() {
   const [splashDone, setSplashDone] = useState(false);
 
@@ -98,6 +138,7 @@ export default function App() {
             <CartProvider>
               <CartSyncBridge />
               <PushBridge />
+              <BackButtonHandler />
               <Routes>
                 {/* Public routes with Navbar + Footer */}
                 <Route element={<MainLayout />}>
