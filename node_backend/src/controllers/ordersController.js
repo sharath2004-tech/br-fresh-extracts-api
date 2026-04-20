@@ -155,7 +155,16 @@ export async function updateAdminOrder(req, res, next) {
         Cancelled: 'We regret to inform you that your order has been cancelled. Please contact us if you have any questions — we are here to help.',
       };
       const body = statusMessages[update.status] || `Your order status has been updated to: ${update.status}`;
-      sendPushNotification(order.user_id, 'BR Fresh Extracts — Order Update', body);
+
+      // For Delivered orders, include the first product_id so the app can open the review page on tap
+      const data = {};
+      if (update.status === 'Delivered') {
+        const firstProductId = order.items?.[0]?.product_id;
+        if (firstProductId) data.product_id = String(firstProductId);
+        data.action = 'review';
+      }
+
+      sendPushNotification(order.user_id, 'BR Fresh Extracts — Order Update', body, data);
     }
 
     res.json(normalizeOrder(order));

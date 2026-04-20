@@ -57,9 +57,10 @@ export function firebaseAdmin() {
 
 /**
  * Send a push notification to a user by their MongoDB user_id.
+ * Optional `data` object adds key-value pairs for tap navigation.
  * Silently skips if Firebase is not configured or user has no tokens.
  */
-export async function sendPushNotification(userId, title, body) {
+export async function sendPushNotification(userId, title, body, data = {}) {
   if (!initialized) return;
   try {
     const User = (await import('../models/User.js')).default;
@@ -67,8 +68,14 @@ export async function sendPushNotification(userId, title, body) {
     const tokens = user?.fcm_tokens?.filter(Boolean) || [];
     if (tokens.length === 0) return;
 
+    // FCM data values must all be strings
+    const stringData = Object.fromEntries(
+      Object.entries(data).map(([k, v]) => [k, String(v)])
+    );
+
     const message = {
       notification: { title, body },
+      data: stringData,
       tokens,
     };
     const response = await admin.messaging().sendEachForMulticast(message);

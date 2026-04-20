@@ -47,6 +47,7 @@ const _API_URL = _rawApi.endsWith('/') ? _rawApi : _rawApi + '/';
 
 function PushBridge() {
   const { user, getValidToken } = useAuth();
+  const navigate = useNavigate();
   useEffect(() => {
     if (user?.role !== 'customer') return;
     (async () => {
@@ -72,10 +73,18 @@ function PushBridge() {
           } catch { /* non-critical */ }
         });
 
+        // Foreground notification — show in-app toast
         PushNotifications.addListener('pushNotificationReceived', notification => {
-          // Show a simple in-app toast for foreground notifications
           const event = new CustomEvent('fcm:notification', { detail: notification });
           window.dispatchEvent(event);
+        });
+
+        // Background/killed — user tapped the notification
+        PushNotifications.addListener('pushNotificationActionPerformed', ({ notification }) => {
+          const data = notification?.data || {};
+          if (data.action === 'review' && data.product_id) {
+            navigate(`/product/${data.product_id}`);
+          }
         });
       } catch { /* not on Android / Capacitor not available */ }
     })();
