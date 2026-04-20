@@ -78,73 +78,6 @@ export async function login(req, res, next) {
   }
 }
 
-// Verify MSG91 OTP widget access-token, find-or-create user, return app JWT
-export async function verifyOtpWidget(req, res, next) {
-  try {
-    const { access_token, phone: phoneFromClient, name, email } = req.body || {};
-    if (!access_token) {
-      return res.status(400).json({ error: 'access_token required' });
-    }
-
-    const authKey = process.env.MSG91_AUTH_KEY;
-    if (!authKey) {
-      return res.status(500).json({ error: 'MSG91_AUTH_KEY is not configured on the server.' });
-    }
-
-    const msg91Res = await fetch('https://control.msg91.com/api/v5/widget/verifyAccessToken', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ authkey: authKey, 'access-token': access_token }),
-    });
-
-    const msg91Data = await msg91Res.json();
-    console.log('[MSG91 verifyAccessToken response]', JSON.stringify(msg91Data));
-
-    if (msg91Data.type !== 'success') {
-      return res.status(401).json({ error: msg91Data.message || 'OTP verification failed.' });
-    }
-
-    // MSG91 may return mobile in different locations depending on widget version
-    const mobile =
-      msg91Data.data?.mobile ||
-      msg91Data.data?.Mobile ||
-      msg91Data.data?.phone ||
-      msg91Data.data?.identifier ||
-      msg91Data.mobile ||
-      msg91Data.identifier ||
-      phoneFromClient; // fallback: client already sent OTP to this number; token proves it was verified
-
-    if (!mobile) {
-      // Return the full data so we can debug exactly what came back
-      return res.status(401).json({
-        error: 'Could not retrieve mobile number from OTP response.',
-        debug: msg91Data.data || msg91Data,
-      });
-    }
-
-    const phone_number = mobile.startsWith('+') ? mobile : `+${mobile}`;
-
-    let user = await findUserByPhone(phone_number);
-    if (!user) {
-      user = await User.create({
-        phone_number,
-        name: name?.trim() || 'Customer',
-        email: email?.trim() || '',
-        is_profile_complete: !!(name?.trim()),
-      });
-    }
-
-    const tokens = {
-      access: signAccessToken({ user_id: user.id, phone_number: user.phone_number, name: user.name }),
-      refresh: signRefreshToken({ user_id: user.id, phone_number: user.phone_number }),
-    };
-
-    return res.json({ tokens, user: normalizeUser(user) });
-  } catch (err) {
-    next(err);
-  }
-}
-
 export async function profile(req, res, next) {
   try {
     const userId = req.jwtUser?.user_id;
@@ -232,57 +165,6 @@ export async function firebaseVerify(req, res, next) {
     };
     console.log(`[firebaseVerify] phone=${phone_number} uid=${decoded.uid}`);
     return res.json({ tokens, user: normalizeUser(user) });
-  } catch (err) {
-    next(err);
-  }
-}
-
-// Proxy: send OTP via MSG91 direct OTP API (no captcha required — for Android Capacitor)
-export async function sendOtpProxy(req, res, next) {
-  try {
-    const { mobile } = req.body || {};
-    if (!mobile) return res.status(400).json({ error: 'mobile required' });
-    const authKey = process.env.MSG91_AUTH_KEY;
-    const templateId = process.env.MSG91_OTP_TEMPLATE_ID;
-    if (!authKey) return res.status(500).json({ error: 'MSG91_AUTH_KEY not configured.' });
-    if (!templateId) return res.status(500).json({ error: 'MSG91_OTP_TEMPLATE_ID not configured.' });
-
-    // MSG91 direct OTP API — does NOT require browser captcha
-    const r = await fetch(`https://control.msg91.com/api/v5/otp?template_id=${encodeURIComponent(templateId)}&mobile=${encodeURIComponent(mobile)}&authkey=${encodeURIComponent(authKey)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-    });
-    const data = await r.json();
-    console.log(`[sendOtpProxy] mobile=${mobile} response=${JSON.stringify(data)}`);
-    if (data.type === 'success') return res.json({ success: true });
-    return res.status(400).json({ error: data.message || 'Failed to send OTP.' });
-  } catch (err) {
-    next(err);
-  }
-}
-
-// Proxy: verify OTP via MSG91 direct OTP API
-export async function verifyOtpProxy(req, res, next) {
-  try {
-    const { mobile, otp, name, email } = req.body || {};
-    if (!mobile || !otp) return res.status(400).json({ error: 'mobile and otp required' });
-    const authKey = process.env.MSG91_AUTH_KEY;
-    if (!authKey) return res.status(500).json({ error: 'MSG91_AUTH_KEY not configured.' });
-
-    const r = await fetch(`https://control.msg91.com/api/v5/otp/verify?mobile=${encodeURIComponent(mobile)}&otp=${encodeURIComponent(otp)}&authkey=${encodeURIComponent(authKey)}`);
-    const data = await r.json();
-    console.log(`[verifyOtpProxy] mobile=${mobile} response=${JSON.stringify(data)}`);
-    if (data.type !== 'success') return res.status(401).json({ error: data.message || 'OTP incorrect.' });
-
-    // Find or create user
-    let user = await findUserByPhone(mobile);
-    if (!user) {
-      user = new User({ phone_number: mobile, name: name || '', email: email || '', role: 'customer' });
-      await user.save();
-    }
-    const access = signAccessToken({ user_id: user._id, phone_number: user.phone_number });
-    const refresh = signRefreshToken({ user_id: user._id, phone_number: user.phone_number });
-    return res.json({ access, refresh, user: normalizeUser(user) });
   } catch (err) {
     next(err);
   }
