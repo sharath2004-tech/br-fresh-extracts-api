@@ -113,7 +113,7 @@ const StoreContext = createContext(null);
 const _rawApi = import.meta.env.VITE_API_URL || '/api/';
 const API_URL = _rawApi.endsWith('/') ? _rawApi : _rawApi + '/';
 
-function saveStoreSettings(patch) {
+async function saveStoreSettings(patch) {
   const headers = { 'Content-Type': 'application/json' };
   if (UPLOAD_SECRET) headers['X-Upload-Secret'] = UPLOAD_SECRET;
   // Also send admin JWT so the request is authenticated even if UPLOAD_SECRET is not set
