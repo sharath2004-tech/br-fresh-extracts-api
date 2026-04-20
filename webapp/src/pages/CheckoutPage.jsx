@@ -222,7 +222,7 @@ export default function CheckoutPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({
-            items: items.map(i => ({ product: i.name, quantity: i.qty, price_at_time: i.price, weight: i.weight || '' })),
+            items: items.map(i => ({ product_id: i.id || null, product: i.name, quantity: i.qty, price_at_time: i.price, weight: i.weight || '' })),
             total_amount: grandTotal,
             shipping,
             payment_mode: paymentMethod,

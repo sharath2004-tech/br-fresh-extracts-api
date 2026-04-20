@@ -26,7 +26,7 @@ function StarRating({ value, onChange, size = 20 }) {
   );
 }
 
-function ReviewsSection({ productId, user, getValidToken }) {
+function ReviewsSection({ productId, productName, user, getValidToken }) {
   const [data, setData] = useState({ reviews: [], avg_rating: 0, count: 0 });
   const [loading, setLoading] = useState(true);
   const [rating, setRating] = useState(0);
@@ -57,7 +57,10 @@ function ReviewsSection({ productId, user, getValidToken }) {
         const orders = await res.json();
         const hasDelivered = orders.some(
           o => o.status === 'Delivered' &&
-               o.items?.some(i => i.product_id === productId)
+               o.items?.some(i =>
+                 (i.product_id && i.product_id === productId) ||
+                 (productName && i.product && i.product === productName)
+               )
         );
         setCanReview(hasDelivered);
       } catch { /* non-critical */ }
@@ -406,7 +409,7 @@ export default function ProductDetailPage() {
       </div>
 
       {/* Reviews */}
-      <ReviewsSection productId={id} user={user} getValidToken={getValidToken} />
+      <ReviewsSection productId={id} productName={product?.name} user={user} getValidToken={getValidToken} />
 
       {/* Suggestions */}
       {suggestions.length > 0 && (
