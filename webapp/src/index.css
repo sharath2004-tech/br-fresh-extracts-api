@@ -10,14 +10,15 @@
     --sal: env(safe-area-inset-left);
   }
   body {
-    @apply bg-cream font-sans text-warm-brown antialiased;
+    @apply bg-cream font-sans text-warm-brown antialiased font-medium;
+    font-size: 17px;
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
   }
   h1, h2, h3, h4, h5 {
-    @apply font-serif;
+    @apply font-serif font-semibold;
   }
 }
 
@@ -36,10 +37,10 @@
            transition-colors duration-200 tracking-wide;
   }
   .section-title {
-    @apply font-serif text-4xl md:text-5xl text-forest-700 leading-tight;
+    @apply font-serif font-semibold text-4xl md:text-5xl text-forest-700 leading-tight;
   }
   .section-subtitle {
-    @apply font-sans text-warm-brown/70 text-lg leading-relaxed;
+    @apply font-sans font-medium text-warm-brown/70 text-xl leading-relaxed;
   }
   .card-hover {
     @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl;
