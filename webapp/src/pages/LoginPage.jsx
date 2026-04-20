@@ -52,10 +52,14 @@ export default function LoginPage() {
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
-  const [step, setStep] = useState('phone'); // 'phone' | 'otp'
+  const [step, setStep] = useState('phone'); // 'phone' | 'otp' | 'profile'
+  const [profileForm, setProfileForm] = useState({ name: '', address: '', city: '', state: '', pincode: '', label: 'Home' });
   const [error, setError] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Stores the Firebase idToken while user fills in their profile (new user sign-up)
+  const pendingIdTokenRef = useRef('');
 
   // Native: stores Firebase verificationId from Capacitor plugin
   const firebaseVerificationIdRef = useRef('');
@@ -66,7 +70,7 @@ export default function LoginPage() {
   // Web: RecaptchaVerifier instance (must be cleared on resend)
   const recaptchaVerifierRef = useRef(null);
 
-  const { loginAdmin, verifyFirebaseToken, user } = useAuth();
+  const { loginAdmin, verifyFirebaseToken, completeSignup, user } = useAuth();
   const { t, tr } = useLanguage();
   const navigate = useNavigate();
 
@@ -116,7 +120,12 @@ export default function LoginPage() {
       }
       setStep('otp');
     } catch (e) {
-      setError(e?.message || 'Failed to send OTP. Try again.');
+      const code = e?.code || '';
+      if (code === 'auth/too-many-requests' || e?.message?.includes('too-many-requests')) {
+        setError('Too many attempts. Please wait a few minutes and try again.');
+      } else {
+        setError(e?.message || 'Failed to send OTP. Try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -147,6 +156,11 @@ export default function LoginPage() {
       }
       const authResult = await verifyFirebaseToken(idToken, { name: form.name, email: form.email });
       if (authResult.success) navigate('/');
+      else if (authResult.is_new) {
+        // New user — save token and show profile setup
+        pendingIdTokenRef.current = idToken;
+        setStep('profile');
+      }
       else setError(authResult.error);
     } catch (e) {
       setError(e?.message || 'OTP incorrect. Please try again.');
@@ -170,7 +184,12 @@ export default function LoginPage() {
         confirmationResultRef.current = await signInWithPhoneNumber(auth, identifier, verifier);
       }
     } catch (e) {
-      setError(e?.message || 'Failed to resend OTP. Try again.');
+      const code = e?.code || '';
+      if (code === 'auth/too-many-requests' || e?.message?.includes('too-many-requests')) {
+        setError('Too many attempts. Please wait a few minutes and try again.');
+      } else {
+        setError(e?.message || 'Failed to resend OTP. Try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -182,6 +201,26 @@ export default function LoginPage() {
     setLoading(false);
     if (result.success) navigate('/admin');
     else setError(result.error);
+  };
+
+  const handleCompleteSignup = async () => {
+    setError('');
+    if (!profileForm.name.trim()) { setError('Please enter your full name.'); return; }
+    if (!profileForm.address.trim() || !profileForm.city.trim() || !profileForm.state.trim() || !profileForm.pincode.trim()) {
+      setError('Please fill in all address fields.'); return;
+    }
+    setLoading(true);
+    const result = await completeSignup(pendingIdTokenRef.current, profileForm.name, {
+      label:   profileForm.label || 'Home',
+      name:    profileForm.name,
+      address: profileForm.address,
+      city:    profileForm.city,
+      state:   profileForm.state,
+      pincode: profileForm.pincode,
+    });
+    setLoading(false);
+    if (result.success) navigate('/');
+    else setError(result.error || 'Failed to create account. Try again.');
   };
 
   return (
@@ -315,6 +354,56 @@ export default function LoginPage() {
                 </>
               )}
 
+              {step === 'profile' && (
+                <>
+                  <div className="bg-forest-50 border border-forest-100 rounded-xl px-4 py-3 mb-1">
+                    <p className="text-sm font-semibold text-forest-700">Welcome! Complete your profile to get started.</p>
+                    <p className="text-xs text-warm-brown/60 mt-0.5">We need a few details to deliver your orders.</p>
+                  </div>
+
+                  <div>
+                    <label className="label">Full Name *</label>
+                    <input className="input-field" type="text" placeholder="Your full name" autoFocus
+                      value={profileForm.name} onChange={e => setProfileForm(f => ({ ...f, name: e.target.value }))} />
+                  </div>
+
+                  <div>
+                    <label className="label">Delivery Address *</label>
+                    <input className="input-field" type="text" placeholder="House no., Street, Area"
+                      value={profileForm.address} onChange={e => setProfileForm(f => ({ ...f, address: e.target.value }))} />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="label">City *</label>
+                      <input className="input-field" type="text" placeholder="City"
+                        value={profileForm.city} onChange={e => setProfileForm(f => ({ ...f, city: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="label">State *</label>
+                      <input className="input-field" type="text" placeholder="State"
+                        value={profileForm.state} onChange={e => setProfileForm(f => ({ ...f, state: e.target.value }))} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="label">Pincode *</label>
+                    <input className="input-field" type="text" inputMode="numeric" maxLength={6} placeholder="6-digit pincode"
+                      value={profileForm.pincode} onChange={e => setProfileForm(f => ({ ...f, pincode: e.target.value.replace(/\D/g, '') }))} />
+                  </div>
+
+                  {error && <p className="text-red-500 text-sm bg-red-50 px-4 py-2.5 rounded-lg">{tr(error)}</p>}
+
+                  <button type="button" onClick={handleCompleteSignup} disabled={loading}
+                    className="btn-primary w-full flex items-center justify-center gap-2">
+                    {loading
+                      ? <span className="inline-block w-4 h-4 border-2 border-cream/30 border-t-cream rounded-full animate-spin" />
+                      : 'Create Account'}
+                  </button>
+                </>
+              )}
+
+              {step !== 'profile' && (
               <p className="mt-4 text-center text-sm text-warm-brown/60">
                 {isLogin ? t('login.noAccount') : t('login.haveAccount')}
                 <button onClick={() => { setIsLogin(!isLogin); setError(''); }}
@@ -322,6 +411,7 @@ export default function LoginPage() {
                   {isLogin ? t('login.signUpLink') : t('login.signInLink')}
                 </button>
               </p>
+              )}
             </div>
           )}
 

@@ -75,10 +75,13 @@ export default function CheckoutPage() {
   const [paymentFile, setPaymentFile] = useState(null);
   const [paymentPreview, setPaymentPreview] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [selectedAddrId, setSelectedAddrId] = useState(null); // null = enter new address
   const fileRef = useRef();
   const isLoggedInCustomer = user?.role === 'customer';
   const verifiedPhone = user?.phone || '';
 
+  // Pre-fill contact from user profile
   useEffect(() => {
     if (!isLoggedInCustomer) return;
     setForm((f) => ({
@@ -88,6 +91,38 @@ export default function CheckoutPage() {
       email: f.email || user?.email || '',
     }));
   }, [isLoggedInCustomer, user, verifiedPhone]);
+
+  // Fetch saved delivery addresses
+  useEffect(() => {
+    if (!isLoggedInCustomer) return;
+    (async () => {
+      try {
+        const token = await getValidToken();
+        if (!token) return;
+        const res = await fetch(`${API_URL}auth/addresses/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const addrs = data.addresses || [];
+        setSavedAddresses(addrs);
+        // Auto-select first address if any
+        if (addrs.length > 0) {
+          setSelectedAddrId(addrs[0].id);
+          const a = addrs[0];
+          setForm(f => ({
+            ...f,
+            name:    a.name    || f.name,
+            address: a.address || '',
+            city:    a.city    || '',
+            state:   a.state   || '',
+            pincode: a.pincode || '',
+          }));
+          if (a.lat && a.lng) setLocation({ lat: a.lat, lng: a.lng, label: a.address });
+        }
+      } catch { /* non-critical */ }
+    })();
+  }, [isLoggedInCustomer]);
 
   const shippingMode = store.settings?.shippingMode || 'flat';
   const shippingCharge = Number(store.settings?.shippingCharge ?? 79);
@@ -243,73 +278,8 @@ export default function CheckoutPage() {
       }
     } catch { /* non-critical — order is already in localStorage */ }
 
-    // Build WhatsApp notification message
-    const translatedNames = await Promise.all(items.map(async (item) => translateAsync(item.name)));
-    const orderLines = items.map((item, idx) =>
-      `• ${translatedNames[idx]} (${item.weight}) × ${item.qty} — ₹${(item.price * item.qty).toLocaleString()}`
-    ).join('\n');
-
-    const shippingText = shippingMode === 'discuss'
-      ? t('checkout.shippingDiscuss')
-      : shipping === 0
-        ? t('checkout.shippingFree')
-        : `₹${shipping}`;
-
-    const msg = [
-      paymentMethod === 'COD' ? t('whatsapp.newCod') : t('whatsapp.newUpi'),
-      t('whatsapp.orderId', { id: orderId }),
-      '',
-      t('whatsapp.name', { name: form.name }),
-      t('whatsapp.phone', { phone: form.phone }),
-      form.email ? t('whatsapp.email', { email: form.email }) : null,
-      '',
-      t('whatsapp.addressTitle'),
-      `${form.address}`,
-      `${form.city}, ${form.state} — ${form.pincode}`,
-      mapsLink ? t('whatsapp.location', { link: mapsLink }) : null,
-      '',
-      t('whatsapp.detailsTitle'),
-      orderLines,
-      '',
-      t('whatsapp.subtotal', { amount: total.toLocaleString() }),
-      t('whatsapp.shipping', { amount: shippingText }),
-      shippingMode === 'discuss' ? t('whatsapp.shippingDiscuss') : null,
-      t('whatsapp.total', { amount: grandTotal.toLocaleString() }),
-      '',
-      paymentMethod === 'COD'
-        ? t('whatsapp.codNote')
-        : t('whatsapp.upiNote'),
-    ].filter(l => l !== null).join('\n');
-
-    if (paymentMethod === 'UPI' && paymentFile) {
-      // Try Web Share API (shares file + text to WhatsApp on mobile)
-      const canShareFile = navigator.canShare && navigator.canShare({ files: [paymentFile] });
-      if (canShareFile) {
-        try {
-          await navigator.share({ files: [paymentFile], text: msg });
-          clearCart();
-          navigate('/');
-          setSubmitting(false);
-          return;
-        } catch (err) {
-          if (err.name === 'AbortError') { setSubmitting(false); return; }
-        }
-      }
-      // Fallback: text link + auto-download screenshot
-      await openUrl(`https://wa.me/${whatsapp}?text=${encodeURIComponent(msg)}`);
-      if (paymentPreview) {
-        const dlLink = document.createElement('a');
-        dlLink.href = paymentPreview;
-        dlLink.download = `payment-${orderId}.jpg`;
-        dlLink.click();
-      }
-    } else {
-      // COD: just send text to WhatsApp
-      await openUrl(`https://wa.me/${whatsapp}?text=${encodeURIComponent(msg)}`);
-    }
-
     clearCart();
-    navigate('/');
+    navigate('/orders');
     setSubmitting(false);
   };
 
@@ -394,6 +364,55 @@ export default function CheckoutPage() {
                         : <><Navigation size={13} /> {t('checkout.useLocation')}</>}
                     </button>
                   </div>
+
+                  {/* Saved address picker */}
+                  {savedAddresses.length > 0 && (
+                    <div className="mb-5 space-y-2">
+                      <p className="text-xs font-semibold text-warm-brown/70 uppercase tracking-wide mb-2">Saved Addresses</p>
+                      {savedAddresses.map((addr) => (
+                        <button
+                          key={addr.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedAddrId(addr.id);
+                            setForm(f => ({
+                              ...f,
+                              name:    addr.name    || f.name,
+                              address: addr.address || '',
+                              city:    addr.city    || '',
+                              state:   addr.state   || '',
+                              pincode: addr.pincode || '',
+                            }));
+                            if (addr.lat && addr.lng) setLocation({ lat: addr.lat, lng: addr.lng, label: addr.address });
+                            else setLocation(null);
+                          }}
+                          className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all ${
+                            selectedAddrId === addr.id
+                              ? 'border-terra-400 bg-terra-50'
+                              : 'border-sand-200 bg-white hover:border-sand-300'
+                          }`}
+                        >
+                          <p className="text-sm font-semibold text-forest-700">{addr.label} — {addr.name}</p>
+                          <p className="text-xs text-warm-brown/60">{addr.address}, {addr.city}, {addr.state} {addr.pincode}</p>
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedAddrId(null);
+                          setForm(f => ({ ...f, address: '', city: '', state: '', pincode: '' }));
+                          setLocation(null);
+                        }}
+                        className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all ${
+                          selectedAddrId === null
+                            ? 'border-forest-400 bg-forest-50'
+                            : 'border-sand-200 bg-white hover:border-sand-300'
+                        }`}
+                      >
+                        <p className="text-sm font-semibold text-forest-700">+ Use a different address</p>
+                      </button>
+                    </div>
+                  )}
                   {locError && <p className="text-xs text-red-500 mb-3 bg-red-50 rounded-lg px-3 py-2">{locError}</p>}
                   {location && (
                     <div className="flex items-start gap-2 text-xs text-forest-600 bg-forest-50 border border-forest-100 rounded-xl px-3 py-2 mb-4">
@@ -405,6 +424,8 @@ export default function CheckoutPage() {
                       </div>
                     </div>
                   )}
+                  {/* Show address fields when no saved address is selected or user wants a new one */}
+                  {(selectedAddrId === null || savedAddresses.length === 0) && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">
                       <label className="label">{t('checkout.addressLine')}</label>
@@ -423,6 +444,7 @@ export default function CheckoutPage() {
                       <input required pattern="[1-9][0-9]{5}" className="input-field" value={form.pincode} onChange={e => set('pincode', e.target.value)} placeholder={t('checkout.pincodePlaceholder')} />
                     </div>
                   </div>
+                  )}
                 </div>
               </AnimatedSection>
 

@@ -7,7 +7,21 @@ function normalizeUser(u) {
   return {
     phone_number: u.phone_number,
     name: u.name,
+    email: u.email || '',
     is_profile_complete: !!u.is_profile_complete,
+    addresses: (u.addresses || []).map(a => ({
+      id: String(a._id),
+      label: a.label || 'Home',
+      name: a.name || '',
+      phone: a.phone || '',
+      address: a.address || '',
+      city: a.city || '',
+      state: a.state || '',
+      pincode: a.pincode || '',
+      lat: a.lat || null,
+      lng: a.lng || null,
+      maps_link: a.maps_link || '',
+    })),
   };
 }
 
@@ -150,20 +164,53 @@ export async function firebaseVerify(req, res, next) {
     if (!phone_number) return res.status(400).json({ error: 'No phone number in Firebase token.' });
 
     let user = await findUserByPhone(phone_number);
-    if (!user) {
-      user = await User.create({
-        phone_number,
-        name: name?.trim() || 'Customer',
-        email: email?.trim() || '',
-        is_profile_complete: !!(name?.trim()),
+
+    // Existing user → login directly
+    if (user) {
+      const tokens = {
+        access: signAccessToken({ user_id: user.id, phone_number: user.phone_number, name: user.name }),
+        refresh: signRefreshToken({ user_id: user.id, phone_number: user.phone_number }),
+      };
+      console.log(`[firebaseVerify] existing user login phone=${phone_number}`);
+      return res.json({ tokens, user: normalizeUser(user) });
+    }
+
+    // New user — if no name provided, signal frontend to collect profile
+    const { name, email, address_data } = req.body || {};
+    if (!name?.trim()) {
+      return res.json({ is_new: true });
+    }
+
+    // Create new user with profile
+    user = await User.create({
+      phone_number,
+      name: name.trim(),
+      email: email?.trim() || '',
+      is_profile_complete: true,
+    });
+
+    // Save first address if provided
+    if (address_data?.address?.trim()) {
+      user.addresses.push({
+        label:     address_data.label     || 'Home',
+        name:      address_data.name      || name.trim(),
+        phone:     phone_number,
+        address:   address_data.address,
+        city:      address_data.city      || '',
+        state:     address_data.state     || '',
+        pincode:   address_data.pincode   || '',
+        lat:       address_data.lat       || null,
+        lng:       address_data.lng       || null,
+        maps_link: address_data.maps_link || '',
       });
+      await user.save();
     }
 
     const tokens = {
       access: signAccessToken({ user_id: user.id, phone_number: user.phone_number, name: user.name }),
       refresh: signRefreshToken({ user_id: user.id, phone_number: user.phone_number }),
     };
-    console.log(`[firebaseVerify] phone=${phone_number} uid=${decoded.uid}`);
+    console.log(`[firebaseVerify] new user created phone=${phone_number}`);
     return res.json({ tokens, user: normalizeUser(user) });
   } catch (err) {
     next(err);
@@ -216,5 +263,68 @@ export async function saveFcmToken(req, res, next) {
       $addToSet: { fcm_tokens: token },
     });
     res.json({ ok: true });
+  } catch (err) { next(err); }
+}
+
+// GET /auth/addresses/ — list saved delivery addresses
+export async function getAddresses(req, res, next) {
+  try {
+    const userId = req.jwtUser?.user_id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const user = await User.findById(userId).select('addresses');
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+    res.json({ addresses: normalizeUser(user).addresses });
+  } catch (err) { next(err); }
+}
+
+// POST /auth/addresses/ — add a delivery address
+export async function addAddress(req, res, next) {
+  try {
+    const userId = req.jwtUser?.user_id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+
+    const { label, name, phone, address, city, state, pincode, lat, lng, maps_link } = req.body || {};
+    if (!address?.trim()) return res.status(400).json({ error: 'Address is required.' });
+
+    // Max 10 saved addresses per user
+    if (user.addresses.length >= 10) {
+      return res.status(400).json({ error: 'Maximum 10 saved addresses allowed.' });
+    }
+
+    user.addresses.push({
+      label: label?.trim() || 'Home',
+      name: name?.trim() || user.name,
+      phone: phone?.trim() || user.phone_number,
+      address: address.trim(),
+      city: city?.trim() || '',
+      state: state?.trim() || '',
+      pincode: pincode?.trim() || '',
+      lat: lat || null,
+      lng: lng || null,
+      maps_link: maps_link?.trim() || '',
+    });
+    await user.save();
+    res.json({ addresses: normalizeUser(user).addresses });
+  } catch (err) { next(err); }
+}
+
+// DELETE /auth/addresses/:id/ — remove a saved address
+export async function deleteAddress(req, res, next) {
+  try {
+    const userId = req.jwtUser?.user_id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+
+    const addrId = req.params.id;
+    const before = user.addresses.length;
+    user.addresses = user.addresses.filter(a => String(a._id) !== addrId);
+    if (user.addresses.length === before) {
+      return res.status(404).json({ error: 'Address not found.' });
+    }
+    await user.save();
+    res.json({ addresses: normalizeUser(user).addresses });
   } catch (err) { next(err); }
 }

@@ -6,6 +6,17 @@ const API_URL = import.meta.env.VITE_API_URL || '/api/';
 
 const isEmail = (value = '') => value.includes('@');
 
+function _buildUser(data) {
+  return {
+    role: 'customer',
+    phone: data.user?.phone_number || '',
+    name: data.user?.name || 'Customer',
+    email: data.user?.email || '',
+    addresses: data.user?.addresses || [],
+    tokens: data.tokens,
+  };
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
@@ -47,24 +58,36 @@ export function AuthProvider({ children }) {
       const res = await fetch(`${base}auth/firebase-verify/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          idToken,
-          name: profile?.name?.trim() || '',
-          email: profile?.email?.trim() || '',
-        }),
+        body: JSON.stringify({ idToken }),
       });
       const data = await res.json();
       if (!res.ok) return { success: false, error: data.error || 'Verification failed.' };
-      const u = {
-        role: 'customer',
-        phone: data.user?.phone_number || '',
-        name: data.user?.name || 'Customer',
-        email: data.user?.email || '',
-        tokens: data.tokens,
-      };
+      // New user — backend needs name + address before creating account
+      if (data.is_new) return { success: false, is_new: true };
+      const u = _buildUser(data);
       setUser(u);
       localStorage.setItem('so_user', JSON.stringify(u));
       return { success: true, role: 'customer' };
+    } catch (err) {
+      return { success: false, error: `Network error: ${err?.message || 'unknown'}` };
+    }
+  };
+
+  // Called from LoginPage profile step after OTP for a brand-new user
+  const completeSignup = async (idToken, name, addressData = null) => {
+    try {
+      const base = API_URL.endsWith('/') ? API_URL : `${API_URL}/`;
+      const res = await fetch(`${base}auth/firebase-verify/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken, name, address_data: addressData }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { success: false, error: data.error || 'Signup failed.' };
+      const u = _buildUser(data);
+      setUser(u);
+      localStorage.setItem('so_user', JSON.stringify(u));
+      return { success: true };
     } catch (err) {
       return { success: false, error: `Network error: ${err?.message || 'unknown'}` };
     }
@@ -114,6 +137,7 @@ export function AuthProvider({ children }) {
       user,
       loginAdmin,
       verifyFirebaseToken,
+      completeSignup,
       logout,
       getValidToken,
       isAdmin: user?.role === 'admin',

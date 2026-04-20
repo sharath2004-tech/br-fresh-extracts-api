@@ -1,10 +1,13 @@
 import express from 'express';
 import multer from 'multer';
 import {
+    addAddress,
     adminLogin,
     changePassword,
     checkUser,
+    deleteAddress,
     firebaseVerify,
+    getAddresses,
     getCart,
     login,
     profile,
@@ -100,6 +103,9 @@ router.post('/auth/token/refresh/', refreshToken);
 router.get('/auth/cart/', requireJwt, getCart);
 router.put('/auth/cart/', requireJwt, saveCart);
 router.post('/auth/fcm-token/', requireJwt, saveFcmToken);
+router.get('/auth/addresses/', requireJwt, getAddresses);
+router.post('/auth/addresses/', requireJwt, addAddress);
+router.delete('/auth/addresses/:id/', requireJwt, deleteAddress);
 
 // Translation
 router.post('/translate/', translateText);
