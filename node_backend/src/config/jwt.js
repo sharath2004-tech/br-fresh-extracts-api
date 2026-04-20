@@ -3,10 +3,10 @@ import jwt from 'jsonwebtoken';
 const ACCESS_TTL = process.env.JWT_ACCESS_TTL || '1h';
 const REFRESH_TTL = process.env.JWT_REFRESH_TTL || '7d';
 
-export function signAccessToken(payload) {
+export function signAccessToken(payload, expiresIn) {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error('JWT_SECRET not set');
-  return jwt.sign(payload, secret, { expiresIn: ACCESS_TTL });
+  return jwt.sign(payload, secret, { expiresIn: expiresIn || ACCESS_TTL });
 }
 
 export function signRefreshToken(payload) {

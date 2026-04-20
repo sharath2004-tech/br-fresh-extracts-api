@@ -37,6 +37,7 @@ export default function AdminPageContent() {
   const { store, updatePageCopy } = useStore();
   const [form, setForm] = useState({ ...store.pageCopy });
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState(null);
   const saveTimer = useRef(null);
 
   useEffect(() => { setForm({ ...store.pageCopy }); }, [store.pageCopy]);
@@ -46,20 +47,41 @@ export default function AdminPageContent() {
     setForm(f => {
       const next = { ...f, [key]: value };
       clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => {
-        updatePageCopy(next);
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
+      saveTimer.current = setTimeout(async () => {
+        try {
+          await updatePageCopy(next);
+          setSaved(true);
+          setSaveError(null);
+          setTimeout(() => setSaved(false), 2000);
+        } catch (err) {
+          setSaveError(err.message || 'Failed to save. Please try again.');
+        }
       }, 600);
       return next;
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     clearTimeout(saveTimer.current);
-    updatePageCopy(form);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    setSaveError(null);
+    try {
+      await updatePageCopy(form);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setSaveError(err.message || 'Failed to save. Please try again.');
+    }
+
+  const handleSave = async () => {
+    clearTimeout(saveTimer.current);
+    setSaveError(null);
+    try {
+      await updatePageCopy(form);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setSaveError(err.message || 'Failed to save. Please try again.');
+    }
   };
 
   return (
@@ -69,7 +91,12 @@ export default function AdminPageContent() {
           <h1 className="font-serif text-2xl text-forest-800">Page Content</h1>
           <p className="text-sm text-warm-brown/60 mt-0.5">Edit every text label shown on the homepage sections.</p>
         </div>
-        <button
+        <but
+      {saveError && (
+        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5">
+          ⚠️ {saveError}
+        </p>
+      )}ton
           onClick={handleSave}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors ${
             saved
@@ -81,6 +108,11 @@ export default function AdminPageContent() {
           {saved ? 'Saved!' : 'Save Changes'}
         </button>
       </div>
+      {saveError && (
+        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5">
+          ⚠️ {saveError}
+        </p>
+      )}
 
       {/* Categories Section */}
       <Section title="Categories Section" subtitle="The 'Our Collections' section on the homepage.">

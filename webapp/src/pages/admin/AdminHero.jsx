@@ -7,14 +7,34 @@ export default function AdminHero() {
   const { store, updateHero } = useStore();
   const [form, setForm] = useState({ ...store.hero });
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    updateHero(form);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await updateHero(form);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setSaveError(err.message || 'Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+    setSaveError(null);
+    try {
+      await updateHero(form);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setSaveError(err.message || 'Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -79,22 +99,32 @@ export default function AdminHero() {
                 placeholder={placeholder} />
             </div>
           ))}
-        </div>
-
-        <div className="admin-card space-y-4">
-          <h2 className="font-serif text-lg text-forest-700">Background Image</h2>
-          <div>
-            <label className="label">Background Image</label>
+        </div> disabled={saving}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium transition-all ${
+            saved ? 'bg-forest-600 text-cream' : saving ? 'bg-terra-300 text-cream cursor-not-allowed' : 'bg-terra-500 hover:bg-terra-600 text-cream'
+          }`}>
+          <Save size={15} /> {saved ? 'Saved!' : saving ? 'Saving…' : 'Save Changes'}
+        </button>
+        {saveError && (
+          <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5">
+            ⚠️ {saveError}
+          </p>
+        )}l className="label">Background Image</label>
             <ImageUpload value={form.backgroundImage} onChange={v => set('backgroundImage', v)} previewClass="h-44 w-full object-cover" />
           </div>
         </div>
 
-        <button type="submit"
+        <button type="submit" disabled={saving}
           className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium transition-all ${
-            saved ? 'bg-forest-600 text-cream' : 'bg-terra-500 hover:bg-terra-600 text-cream'
+            saved ? 'bg-forest-600 text-cream' : saving ? 'bg-terra-300 text-cream cursor-not-allowed' : 'bg-terra-500 hover:bg-terra-600 text-cream'
           }`}>
-          <Save size={15} /> {saved ? 'Saved!' : 'Save Changes'}
+          <Save size={15} /> {saved ? 'Saved!' : saving ? 'Saving…' : 'Save Changes'}
         </button>
+        {saveError && (
+          <p className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5">
+            ⚠️ {saveError}
+          </p>
+        )}
       </form>
     </div>
   );

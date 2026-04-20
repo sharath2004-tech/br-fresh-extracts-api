@@ -125,11 +125,15 @@ function saveStoreSettings(patch) {
       if (token) headers['Authorization'] = `Bearer ${token}`;
     }
   } catch { /* ignore */ }
-  fetch(`${API_URL}admin/store-settings/`, {
+  const res = await fetch(`${API_URL}admin/store-settings/`, {
     method: 'PUT',
     headers,
     body: JSON.stringify(patch),
-  }).catch(err => console.warn('Failed to sync store settings to server:', err));
+  });
+  if (!res.ok) {
+    throw new Error(`Server returned ${res.status}. Please sign out and sign back in to the admin panel, then try again.`);
+  }
+  return true;
 }
 
 function normalizeSettings(s) {
@@ -220,15 +224,16 @@ export function StoreProvider({ children }) {
     });
   };
 
-  // Hero — persisted to backend
+  // Hero — persisted to backend; returns a promise (rejects on server error)
   const updateHero = (patch) => {
+    const newHero = { ...store.hero, ...patch };
     setStore(prev => {
-      const newHero = { ...prev.hero, ...patch };
-      const next = { ...prev, hero: newHero };
+      const hero = { ...prev.hero, ...patch };
+      const next = { ...prev, hero };
       try { localStorage.setItem('so_store', JSON.stringify(next)); } catch {}
-      saveStoreSettings({ hero: newHero });
       return next;
     });
+    return saveStoreSettings({ hero: newHero });
   };
 
   // Settings — persisted to backend
@@ -310,15 +315,16 @@ export function StoreProvider({ children }) {
     });
   };
 
-  // Page copy — persisted to backend
+  // Page copy — persisted to backend; returns a promise (rejects on server error)
   const updatePageCopy = (patch) => {
+    const newPageCopy = { ...store.pageCopy, ...patch };
     setStore(prev => {
-      const newPageCopy = { ...prev.pageCopy, ...patch };
-      const next = { ...prev, pageCopy: newPageCopy };
+      const pageCopy = { ...prev.pageCopy, ...patch };
+      const next = { ...prev, pageCopy };
       try { localStorage.setItem('so_store', JSON.stringify(next)); } catch {}
-      saveStoreSettings({ pageCopy: newPageCopy });
       return next;
     });
+    return saveStoreSettings({ pageCopy: newPageCopy });
   };
 
   const updatePrivacyPolicy = (content) => {

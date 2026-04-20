@@ -52,7 +52,7 @@ export async function adminLogin(req, res, next) {
     if (email !== adminEmail || password !== adminPass) {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
-    const token = signAccessToken({ role: 'admin', email });
+    const token = signAccessToken({ role: 'admin', email }, '30d');
     return res.json({ token, role: 'admin' });
   } catch (err) {
     next(err);
