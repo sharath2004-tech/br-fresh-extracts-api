@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import AppSplash from './components/ui/AppSplash';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider, useCart } from './contexts/CartContext';
 import { LanguageProvider } from './contexts/LanguageContext';
@@ -83,7 +84,13 @@ function PushBridge() {
 }
 
 export default function App() {
+  const [splashDone, setSplashDone] = useState(false);
+
+  const handleSplashDone = () => setSplashDone(true);
+
   return (
+    <>
+      {!splashDone && <AppSplash onDone={handleSplashDone} />}
     <Router>
       <LanguageProvider>
         <AuthProvider>
@@ -126,5 +133,6 @@ export default function App() {
         </AuthProvider>
       </LanguageProvider>
     </Router>
+    </>
   );
 }
