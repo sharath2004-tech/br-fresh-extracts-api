@@ -19,6 +19,7 @@ export default function LoginPage() {
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
+  const [otpReqId, setOtpReqId] = useState(''); // MSG91 reqId returned by sendOtp
   const [step, setStep] = useState('phone'); // 'phone' | 'otp'
   const [error, setError] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -88,7 +89,7 @@ export default function LoginPage() {
         });
         const data = await r.json();
         setLoading(false);
-        if (data.success) { setStep('otp'); setError(''); }
+        if (data.success) { setOtpReqId(data.reqId || ''); setStep('otp'); setError(''); }
         else setError(data.error || 'Failed to send OTP. Try again.');
       } catch (e) {
         setLoading(false);
@@ -128,7 +129,7 @@ export default function LoginPage() {
         const r = await fetch(`${API_URL}auth/otp/verify/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mobile: identifier, otp, name: form.name, email: form.email }),
+          body: JSON.stringify({ mobile: identifier, otp, reqId: otpReqId, name: form.name, email: form.email }),
         });
         const data = await r.json();
         setLoading(false);
@@ -163,8 +164,28 @@ export default function LoginPage() {
     );
   };
 
-  const handleResendOtp = () => {
+  const handleResendOtp = async () => {
     setError('');
+    // On Android: call backend again
+    if (isNative()) {
+      const digits = phone.replace(/\D/g, '');
+      const identifier = digits.length === 10 ? `91${digits}` : digits;
+      setLoading(true);
+      try {
+        const r = await fetch(`${API_URL}auth/otp/send/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mobile: identifier }),
+        });
+        const data = await r.json();
+        setLoading(false);
+        if (!data.success) setError(data.error || 'Failed to resend OTP. Try again.');
+      } catch {
+        setLoading(false);
+        setError('Network error. Try again.');
+      }
+      return;
+    }
     if (!window.retryOtp) return;
     window.retryOtp(null, () => {}, (err) => setError(err?.message || 'Resend failed.'));
   };
@@ -260,22 +281,49 @@ export default function LoginPage() {
 
               {step === 'otp' && (
                 <>
-                  <p className="text-sm text-warm-brown/70">OTP sent to <span className="font-semibold">+91 {phone}</span></p>
+                  {/* OTP info card */}
+                  <div className="bg-forest-50 border border-forest-100 rounded-xl px-4 py-3 flex items-start gap-3">
+                    <span className="text-2xl mt-0.5">📱</span>
+                    <div>
+                      <p className="text-sm font-semibold text-forest-700">{t('login.otpSentTo')}</p>
+                      <p className="text-base font-bold text-forest-700 tracking-wide">+91 {phone}</p>
+                      <p className="text-xs text-warm-brown/60 mt-0.5">{t('login.otpHint')}</p>
+                    </div>
+                  </div>
+
                   <div>
                     <label className="label">{t('login.otpLabel')}</label>
-                    <input className="input-field tracking-widest text-xl text-center" type="text"
-                      inputMode="numeric" maxLength={6} placeholder="------"
-                      value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ''))} />
+                    <input
+                      className="input-field tracking-[0.5em] text-2xl text-center font-bold"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="• • • • • •"
+                      autoFocus
+                      value={otp}
+                      onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
+                    />
                   </div>
+
                   {error && <p className="text-red-500 text-sm bg-red-50 px-4 py-2.5 rounded-lg">{tr(error)}</p>}
-                  <button type="button" onClick={handleVerifyOtp} disabled={loading}
-                    className="btn-primary w-full flex items-center justify-center gap-2">
-                    {loading ? <span className="inline-block w-4 h-4 border-2 border-cream/30 border-t-cream rounded-full animate-spin" /> : t('login.verifyOtp')}
+
+                  <button type="button" onClick={handleVerifyOtp} disabled={loading || otp.length < 4}
+                    className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50">
+                    {loading
+                      ? <span className="inline-block w-4 h-4 border-2 border-cream/30 border-t-cream rounded-full animate-spin" />
+                      : t('login.verifyOtp')}
                   </button>
-                  <div className="flex justify-between text-xs text-warm-brown/60 pt-1">
-                    <button type="button" onClick={() => { setStep('phone'); setOtp(''); setError(''); }}
-                      className="hover:underline">{t('login.changePhone') || 'Change number'}</button>
-                    <button type="button" onClick={handleResendOtp} className="text-terra-500 hover:underline">{t('login.resendOtp')}</button>
+
+                  <div className="flex justify-between items-center text-sm pt-1">
+                    <button type="button"
+                      onClick={() => { setStep('phone'); setOtp(''); setOtpReqId(''); setError(''); }}
+                      className="text-warm-brown/60 hover:text-terra-500 transition-colors">
+                      {t('login.changePhone')}
+                    </button>
+                    <button type="button" onClick={handleResendOtp} disabled={loading}
+                      className="text-terra-500 font-medium hover:underline disabled:opacity-50">
+                      {t('login.resendOtp')}
+                    </button>
                   </div>
                 </>
               )}
