@@ -16,7 +16,7 @@ export async function getStoreSettings(req, res) {
 // PUT /api/admin/store-settings/ — admin only, updates any fields
 export async function updateStoreSettings(req, res) {
   try {
-    const allowed = ['hero', 'settings', 'testimonials', 'whyUs', 'privacyPolicy'];
+    const allowed = ['hero', 'settings', 'testimonials', 'whyUs', 'privacyPolicy', 'pageCopy'];
     const patch = {};
     for (const key of allowed) {
       if (req.body[key] !== undefined) patch[key] = req.body[key];
