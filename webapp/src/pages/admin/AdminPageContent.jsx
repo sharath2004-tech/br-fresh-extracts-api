@@ -71,17 +71,6 @@ export default function AdminPageContent() {
     } catch (err) {
       setSaveError(err.message || 'Failed to save. Please try again.');
     }
-
-  const handleSave = async () => {
-    clearTimeout(saveTimer.current);
-    setSaveError(null);
-    try {
-      await updatePageCopy(form);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
-    } catch (err) {
-      setSaveError(err.message || 'Failed to save. Please try again.');
-    }
   };
 
   return (
@@ -91,12 +80,7 @@ export default function AdminPageContent() {
           <h1 className="font-serif text-2xl text-forest-800">Page Content</h1>
           <p className="text-sm text-warm-brown/60 mt-0.5">Edit every text label shown on the homepage sections.</p>
         </div>
-        <but
-      {saveError && (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5">
-          ⚠️ {saveError}
-        </p>
-      )}ton
+        <button
           onClick={handleSave}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors ${
             saved
