@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { connectDb } from './src/config/db.js';
+import { initFirebase } from './src/config/firebase.js';
 import apiRouter from './src/routes/api.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -99,6 +100,7 @@ app.use((err, req, res, next) => {
 
 async function start() {
   await connectDb();
+  initFirebase();
   app.listen(PORT, () => {
     console.log(`API running on :${PORT}`);
   });
