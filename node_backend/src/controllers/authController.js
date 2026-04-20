@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import { firebaseAdmin } from '../config/firebase.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../config/jwt.js';
 import User from '../models/User.js';
 
@@ -193,6 +194,44 @@ export async function refreshToken(req, res, next) {
     const payload = verifyRefreshToken(refresh);
     const access = signAccessToken({ user_id: payload.user_id, phone_number: payload.phone_number || '' });
     res.json({ access });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Verify Firebase Phone Auth ID token — for Android Capacitor native phone login
+export async function firebaseVerify(req, res, next) {
+  try {
+    const { idToken, name, email } = req.body || {};
+    if (!idToken) return res.status(400).json({ error: 'idToken required' });
+
+    let decoded;
+    try {
+      decoded = await firebaseAdmin().auth().verifyIdToken(idToken);
+    } catch (e) {
+      console.error('[firebaseVerify] invalid token:', e?.message);
+      return res.status(401).json({ error: 'Invalid or expired Firebase token.' });
+    }
+
+    const phone_number = decoded.phone_number;
+    if (!phone_number) return res.status(400).json({ error: 'No phone number in Firebase token.' });
+
+    let user = await findUserByPhone(phone_number);
+    if (!user) {
+      user = await User.create({
+        phone_number,
+        name: name?.trim() || 'Customer',
+        email: email?.trim() || '',
+        is_profile_complete: !!(name?.trim()),
+      });
+    }
+
+    const tokens = {
+      access: signAccessToken({ user_id: user.id, phone_number: user.phone_number, name: user.name }),
+      refresh: signRefreshToken({ user_id: user.id, phone_number: user.phone_number }),
+    };
+    console.log(`[firebaseVerify] phone=${phone_number} uid=${decoded.uid}`);
+    return res.json({ tokens, user: normalizeUser(user) });
   } catch (err) {
     next(err);
   }
