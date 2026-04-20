@@ -148,8 +148,8 @@ export async function cancelOrder(req, res, next) {
       return res.status(403).json({ error: 'Forbidden.' });
     }
 
-    if (order.status !== 'Pending') {
-      return res.status(400).json({ error: 'Only Pending orders can be cancelled.' });
+    if (!['Pending', 'Confirmed'].includes(order.status)) {
+      return res.status(400).json({ error: 'Orders can only be cancelled before they are packed.' });
     }
 
     order.status = 'Cancelled';

@@ -227,8 +227,8 @@ export default function OrdersPage() {
                         </div>
                       </div>
 
-                      {/* Cancel button — only for Pending orders */}
-                      {order.status === 'Pending' && (
+                      {/* Cancel button — only before packing (Pending or Confirmed) */}
+                      {['Pending', 'Confirmed'].includes(order.status) && (
                         <div className="mt-4 pt-3 border-t border-sand-100">
                           <button
                             onClick={() => handleCancel(order.id)}
