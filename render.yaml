@@ -44,5 +44,5 @@ services:
         sync: false
       - key: MSG91_AUTH_KEY
         sync: false
-      - key: MSG91_WIDGET_ID
+      - key: MSG91_OTP_TEMPLATE_ID
         sync: false
