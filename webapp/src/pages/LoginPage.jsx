@@ -13,13 +13,19 @@ function isNative() {
   return typeof window !== 'undefined' && window?.Capacitor?.isNativePlatform?.();
 }
 
+// Lazy-load @capacitor-firebase/authentication only on native
+async function getFirebaseAuth() {
+  const mod = await import('@capacitor-firebase/authentication');
+  return mod.FirebaseAuthentication;
+}
+
 export default function LoginPage() {
   const [mode, setMode] = useState('customer');
   const [isLogin, setIsLogin] = useState(true);
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
-  const [otpReqId, setOtpReqId] = useState(''); // MSG91 reqId returned by sendOtp
+  const [firebaseVerificationId, setFirebaseVerificationId] = useState(''); // Firebase verificationId
   const [step, setStep] = useState('phone'); // 'phone' | 'otp'
   const [error, setError] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -27,7 +33,7 @@ export default function LoginPage() {
   const scriptLoadedRef = useRef(false);
   const widgetReadyRef = useRef(false);
 
-  const { loginAdmin, verifyMsg91Token, user } = useAuth();
+  const { loginAdmin, verifyMsg91Token, verifyFirebaseToken, user } = useAuth();
   const { t, tr } = useLanguage();
   const navigate = useNavigate();
 
@@ -78,22 +84,19 @@ export default function LoginPage() {
     if (digits.length < 10) { setError('Enter a valid 10-digit mobile number.'); return; }
     const identifier = digits.length === 10 ? `91${digits}` : digits;
 
-    // On Android: use backend proxy (MSG91 widget CORS blocks capacitor:// origin)
+    // On Android: use Firebase Phone Auth (no DLT/captcha required)
     if (isNative()) {
       setLoading(true);
       try {
-        const r = await fetch(`${API_URL}auth/otp/send/`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mobile: identifier }),
-        });
-        const data = await r.json();
+        const FirebaseAuthentication = await getFirebaseAuth();
+        const result = await FirebaseAuthentication.signInWithPhoneNumber({ phoneNumber: `+${identifier}` });
+        setFirebaseVerificationId(result.verificationId);
         setLoading(false);
-        if (data.success) { setOtpReqId(data.reqId || ''); setStep('otp'); setError(''); }
-        else setError(data.error || 'Failed to send OTP. Try again.');
+        setStep('otp');
+        setError('');
       } catch (e) {
         setLoading(false);
-        setError('Network error. Check your connection and try again.');
+        setError(e?.message || 'Failed to send OTP. Try again.');
       }
       return;
     }
@@ -120,29 +123,23 @@ export default function LoginPage() {
     setError('');
     if (!otp || otp.length < 4) { setError('Enter the OTP you received.'); return; }
 
-    // On Android: verify via backend proxy
+    // On Android: verify via Firebase
     if (isNative()) {
       setLoading(true);
       try {
-        const digits = phone.replace(/\D/g, '');
-        const identifier = digits.length === 10 ? `91${digits}` : digits;
-        const r = await fetch(`${API_URL}auth/otp/verify/`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mobile: identifier, otp, reqId: otpReqId, name: form.name, email: form.email }),
+        const FirebaseAuthentication = await getFirebaseAuth();
+        const result = await FirebaseAuthentication.confirmVerificationCode({
+          verificationId: firebaseVerificationId,
+          verificationCode: otp,
         });
-        const data = await r.json();
+        const idToken = result.user?.idToken || (await FirebaseAuthentication.getIdToken()).token;
+        const authResult = await verifyFirebaseToken(idToken, { name: form.name, email: form.email });
         setLoading(false);
-        if (data.access) {
-          const result = await verifyMsg91Token(null, null, data);
-          if (result.success) navigate('/');
-          else setError(result.error);
-        } else {
-          setError(data.error || 'OTP incorrect. Please try again.');
-        }
+        if (authResult.success) navigate('/');
+        else setError(authResult.error);
       } catch (e) {
         setLoading(false);
-        setError('Network error. Check your connection and try again.');
+        setError(e?.message || 'OTP incorrect. Please try again.');
       }
       return;
     }
@@ -166,23 +163,19 @@ export default function LoginPage() {
 
   const handleResendOtp = async () => {
     setError('');
-    // On Android: call backend again
+    // On Android: resend = call Firebase signInWithPhoneNumber again
     if (isNative()) {
       const digits = phone.replace(/\D/g, '');
       const identifier = digits.length === 10 ? `91${digits}` : digits;
       setLoading(true);
       try {
-        const r = await fetch(`${API_URL}auth/otp/send/`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mobile: identifier }),
-        });
-        const data = await r.json();
+        const FirebaseAuthentication = await getFirebaseAuth();
+        const result = await FirebaseAuthentication.signInWithPhoneNumber({ phoneNumber: `+${identifier}` });
+        setFirebaseVerificationId(result.verificationId);
         setLoading(false);
-        if (!data.success) setError(data.error || 'Failed to resend OTP. Try again.');
-      } catch {
+      } catch (e) {
         setLoading(false);
-        setError('Network error. Try again.');
+        setError(e?.message || 'Failed to resend OTP. Try again.');
       }
       return;
     }
@@ -316,7 +309,7 @@ export default function LoginPage() {
 
                   <div className="flex justify-between items-center text-sm pt-1">
                     <button type="button"
-                      onClick={() => { setStep('phone'); setOtp(''); setOtpReqId(''); setError(''); }}
+                      onClick={() => { setStep('phone'); setOtp(''); setFirebaseVerificationId(''); setError(''); }}
                       className="text-warm-brown/60 hover:text-terra-500 transition-colors">
                       {t('login.changePhone')}
                     </button>

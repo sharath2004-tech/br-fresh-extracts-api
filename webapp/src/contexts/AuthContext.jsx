@@ -81,6 +81,36 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Called after Firebase Phone Auth succeeds on Android native
+  const verifyFirebaseToken = async (idToken, profile = {}) => {
+    try {
+      const base = API_URL.endsWith('/') ? API_URL : `${API_URL}/`;
+      const res = await fetch(`${base}auth/firebase-verify/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idToken,
+          name: profile?.name?.trim() || '',
+          email: profile?.email?.trim() || '',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { success: false, error: data.error || 'Verification failed.' };
+      const u = {
+        role: 'customer',
+        phone: data.user?.phone_number || '',
+        name: data.user?.name || 'Customer',
+        email: data.user?.email || '',
+        tokens: data.tokens,
+      };
+      setUser(u);
+      localStorage.setItem('so_user', JSON.stringify(u));
+      return { success: true, role: 'customer' };
+    } catch (err) {
+      return { success: false, error: `Network error: ${err?.message || 'unknown'}` };
+    }
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem('so_user');
@@ -125,6 +155,7 @@ export function AuthProvider({ children }) {
       user,
       loginAdmin,
       verifyMsg91Token,
+      verifyFirebaseToken,
       logout,
       getValidToken,
       isAdmin: user?.role === 'admin',
