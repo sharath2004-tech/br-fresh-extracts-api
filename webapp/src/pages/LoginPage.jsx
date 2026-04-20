@@ -1,5 +1,5 @@
 import { Eye, EyeOff, Leaf } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -11,10 +11,39 @@ function isNative() {
   return typeof window !== 'undefined' && window?.Capacitor?.isNativePlatform?.();
 }
 
-// Lazy-load @capacitor-firebase/authentication only on native
+// Lazy-load @capacitor-firebase/authentication only on native.
+// IMPORTANT: wrap in plain object — Capacitor plugin proxies intercept ALL property access
+// including `.then`, making the plugin instance appear "thenable". If you return the plugin
+// directly from an async function and then `await` the result, JS calls plugin.then() as a
+// native method which throws "FirebaseAuthentication.then() is not implemented on android".
 async function getFirebaseAuth() {
   const mod = await import('@capacitor-firebase/authentication');
-  return mod.FirebaseAuthentication;
+  return { plugin: mod.FirebaseAuthentication };
+}
+
+// v8: signInWithPhoneNumber returns void; verificationId arrives via phoneCodeSent event
+async function nativeSendOtp(FirebaseAuthentication, phoneNumber) {
+  const handles = [];
+  const cleanup = () => { handles.forEach(h => { try { h?.remove(); } catch {} }); };
+  return new Promise(async (resolve, reject) => {
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error('OTP timed out (30s). Check network or Firebase Phone Auth setup.'));
+    }, 30000);
+    const done = (fn) => { clearTimeout(timer); cleanup(); fn(); };
+    try {
+      // Must await listener registration BEFORE calling signInWithPhoneNumber
+      handles.push(await FirebaseAuthentication.addListener('phoneCodeSent', (event) => {
+        done(() => resolve(event.verificationId));
+      }));
+      handles.push(await FirebaseAuthentication.addListener('phoneVerificationFailed', (event) => {
+        done(() => reject(new Error(event?.message || JSON.stringify(event) || 'Phone verification failed.')));
+      }));
+      await FirebaseAuthentication.signInWithPhoneNumber({ phoneNumber });
+    } catch (err) {
+      done(() => reject(err));
+    }
+  });
 }
 
 export default function LoginPage() {
@@ -76,10 +105,9 @@ export default function LoginPage() {
     setLoading(true);
     try {
       if (isNative()) {
-        // Android: Capacitor Firebase plugin — no captcha required
-        const FirebaseAuthentication = await getFirebaseAuth();
-        const result = await FirebaseAuthentication.signInWithPhoneNumber({ phoneNumber: identifier });
-        firebaseVerificationIdRef.current = result.verificationId;
+        // Android: native Capacitor Firebase plugin (v8 uses phoneCodeSent event)
+        const { plugin: FirebaseAuthentication } = await getFirebaseAuth();
+        firebaseVerificationIdRef.current = await nativeSendOtp(FirebaseAuthentication, identifier);
       } else {
         // Web browser: Firebase JS SDK with invisible reCAPTCHA
         const { signInWithPhoneNumber } = await import('firebase/auth');
@@ -102,7 +130,7 @@ export default function LoginPage() {
     try {
       let idToken;
       if (isNative()) {
-        const FirebaseAuthentication = await getFirebaseAuth();
+        const { plugin: FirebaseAuthentication } = await getFirebaseAuth();
         const result = await FirebaseAuthentication.confirmVerificationCode({
           verificationId: firebaseVerificationIdRef.current,
           verificationCode: otp,
@@ -134,9 +162,8 @@ export default function LoginPage() {
     setLoading(true);
     try {
       if (isNative()) {
-        const FirebaseAuthentication = await getFirebaseAuth();
-        const result = await FirebaseAuthentication.signInWithPhoneNumber({ phoneNumber: identifier });
-        firebaseVerificationIdRef.current = result.verificationId;
+        const { plugin: FirebaseAuthentication } = await getFirebaseAuth();
+        firebaseVerificationIdRef.current = await nativeSendOtp(FirebaseAuthentication, identifier);
       } else {
         const { signInWithPhoneNumber } = await import('firebase/auth');
         const { verifier, auth } = await getRecaptchaVerifier();
