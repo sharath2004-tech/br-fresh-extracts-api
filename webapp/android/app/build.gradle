@@ -3,6 +3,16 @@ apply plugin: 'com.android.application'
 android {
     namespace = "com.brfreshextracts.app"
     compileSdk = rootProject.ext.compileSdkVersion
+
+    signingConfigs {
+        release {
+            storeFile file('../brfreshextracts.keystore')
+            storePassword 'Bhargav!15'
+            keyAlias 'BrFreshExtracts'
+            keyPassword 'Bhargav!15'
+        }
+    }
+
     defaultConfig {
         applicationId "com.brfreshextracts.app"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -20,6 +30,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
 }

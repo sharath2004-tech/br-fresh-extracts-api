@@ -1,6 +1,7 @@
 import {
     CheckSquare,
     ChevronRight,
+    FileText,
     Grid,
     Image,
     LayoutDashboard,
@@ -25,8 +26,9 @@ const navItems = [
   { to: '/admin/categories',   label: 'Categories',   icon: Grid },
   { to: '/admin/products',     label: 'Products',     icon: Package },
   { to: '/admin/testimonials', label: 'Testimonials', icon: MessageSquare },
-  { to: '/admin/why-us',       label: 'Why Us',       icon: CheckSquare },
-  { to: '/admin/settings',     label: 'Settings',     icon: Settings },
+  { to: '/admin/why-us',        label: 'Why Us',        icon: CheckSquare },
+  { to: '/admin/privacy-policy', label: 'Privacy Policy', icon: FileText },
+  { to: '/admin/settings',      label: 'Settings',       icon: Settings },
 ];
 
 export default function AdminLayout() {

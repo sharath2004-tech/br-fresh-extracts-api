@@ -11,6 +11,7 @@ const StoreSettingsSchema = new mongoose.Schema({
   settings: { type: mongoose.Schema.Types.Mixed, default: {} },
   testimonials: { type: [mongoose.Schema.Types.Mixed], default: [] },
   whyUs: { type: [mongoose.Schema.Types.Mixed], default: [] },
+  privacyPolicy: { type: String, default: '' },
 }, { timestamps: true });
 
 StoreSettingsSchema.set('toJSON', {

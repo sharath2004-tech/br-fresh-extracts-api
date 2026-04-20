@@ -51,6 +51,44 @@ const defaultData = {
     { id: 'w3', title: 'FSSAI Certified', description: 'All products are FSSAI licensed, lab-tested and certified for quality & safety.', icon: 'shield' },
     { id: 'w4', title: 'Pan India Delivery', description: 'Free shipping on orders above ₹499. Delivered to your doorstep across India.', icon: 'truck' },
   ],
+  privacyPolicy: `Privacy Policy for BR Fresh Extracts
+Last updated: April 20, 2026
+
+1. Information We Collect
+- Phone number — collected during OTP login to verify your identity
+- Name & email — provided during account setup or checkout
+- Order information — items purchased, delivery address, payment method
+- Device token — collected by Firebase for push notifications
+
+2. How We Use Your Information
+- To process and deliver your orders
+- To send order updates and promotional notifications (you can opt out)
+- To verify your identity via OTP
+- To respond to customer support requests
+
+3. Data Sharing
+We do not sell your personal data. We share data only with:
+- MSG91 — for OTP verification
+- Firebase (Google) — for push notifications
+- Cloudinary — for product image storage
+- Render — cloud hosting provider for our backend
+
+4. Data Retention
+Your account data is retained as long as your account is active. Order history is retained for 3 years for legal/tax purposes. You may request deletion by emailing us.
+
+5. Your Rights
+You may request access to, correction of, or deletion of your personal data by contacting us at brfreshextracts@gmail.com.
+
+6. Security
+We use HTTPS encryption for all data in transit and JWT tokens for authentication.
+
+7. Children's Privacy
+Our app is not directed at children under 13. We do not knowingly collect data from children.
+
+8. Contact Us
+BR Fresh Extracts
+Email: brfreshextracts@gmail.com
+Phone: +91 6305352434`,
 };
 
 const StoreContext = createContext(null);
@@ -116,6 +154,7 @@ export function StoreProvider({ children }) {
           settings: normalizeSettings(storeSettings.settings),
           testimonials: storeSettings.testimonials?.length ? storeSettings.testimonials : prev.testimonials,
           whyUs: storeSettings.whyUs?.length ? storeSettings.whyUs : prev.whyUs,
+          privacyPolicy: storeSettings.privacyPolicy || prev.privacyPolicy,
         } : {}),
         categories: cats.length ? cats.map(c => ({
           id: String(c.id),
@@ -243,6 +282,15 @@ export function StoreProvider({ children }) {
     });
   };
 
+  const updatePrivacyPolicy = (content) => {
+    setStore(prev => {
+      const next = { ...prev, privacyPolicy: content };
+      try { localStorage.setItem('so_store', JSON.stringify(next)); } catch {}
+      saveStoreSettings({ privacyPolicy: content });
+      return next;
+    });
+  };
+
   const resetStore = () => { localStorage.removeItem('so_store'); setStore(defaultData); };
 
   return (
@@ -254,6 +302,7 @@ export function StoreProvider({ children }) {
       addProduct,  updateProduct,  deleteProduct,
       addTestimonial, updateTestimonial, deleteTestimonial,
       addWhyUs, updateWhyUs, deleteWhyUs,
+      updatePrivacyPolicy,
       resetStore,
     }}>
       {children}

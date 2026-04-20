@@ -21,10 +21,12 @@ import AdminExpenses from './pages/admin/AdminExpenses';
 import AdminHero from './pages/admin/AdminHero';
 import AdminLayout from './pages/admin/AdminLayout';
 import AdminOrders from './pages/admin/AdminOrders';
+import AdminPrivacyPolicy from './pages/admin/AdminPrivacyPolicy';
 import AdminProducts from './pages/admin/AdminProducts';
 import AdminSettings from './pages/admin/AdminSettings';
 import AdminTestimonials from './pages/admin/AdminTestimonials';
 import AdminWhyUs from './pages/admin/AdminWhyUs';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 
 // Bridge: syncs cart when user logs in
 function CartSyncBridge() {
@@ -99,6 +101,7 @@ export default function App() {
                   <Route path="orders" element={<OrdersPage />} />
                   <Route path="product/:id" element={<ProductDetailPage />} />
                   <Route path="login" element={<LoginPage />} />
+                  <Route path="privacy-policy" element={<PrivacyPolicyPage />} />
                 </Route>
 
                 {/* Admin routes — own layout, no main navbar */}
@@ -113,6 +116,7 @@ export default function App() {
                   <Route path="testimonials" element={<AdminTestimonials />} />
                   <Route path="why-us"       element={<AdminWhyUs />} />
                   <Route path="settings"     element={<AdminSettings />} />
+                  <Route path="privacy-policy" element={<AdminPrivacyPolicy />} />
                 </Route>
 
                 <Route path="*" element={<Navigate to="/" replace />} />
