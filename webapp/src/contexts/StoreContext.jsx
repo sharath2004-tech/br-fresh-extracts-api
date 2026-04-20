@@ -85,6 +85,9 @@ function load() {
       ...defaultData,
       ...stored,
       settings: { ...defaultData.settings, ...(stored.settings || {}) },
+      // Always start with empty products/categories — the API fetch will populate them
+      products: [],
+      categories: [],
     };
     if (merged.settings.shippingCharge !== undefined) merged.settings.shippingCharge = Number(merged.settings.shippingCharge);
     if (merged.settings.freeShippingAbove !== undefined) merged.settings.freeShippingAbove = Number(merged.settings.freeShippingAbove);
@@ -132,7 +135,7 @@ export function StoreProvider({ children }) {
           in_stock: p.in_stock,
           featured: p.featured || false,
           variants: p.variants && p.variants.length ? p.variants : [{ size: p.weight || '', price: Number(p.price) }],
-        })) : prev.products,
+        })) : defaultData.products,
       }));
     }).catch(() => {/* keep defaults on network failure */});
   }, []);
