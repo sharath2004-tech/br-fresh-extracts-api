@@ -152,6 +152,7 @@ function load() {
     const merged = {
       ...defaultData,
       ...stored,
+      hero: { ...defaultData.hero, ...(stored.hero || {}) },
       settings: { ...defaultData.settings, ...(stored.settings || {}) },
       pageCopy: { ...defaultData.pageCopy, ...(stored.pageCopy || {}) },
       // Always start with empty products/categories — the API fetch will populate them

@@ -1,5 +1,5 @@
 import { Eye, Save } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ImageUpload from '../../components/ui/ImageUpload';
 import { useStore } from '../../contexts/StoreContext';
 
@@ -9,6 +9,8 @@ export default function AdminHero() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+
+  useEffect(() => { setForm({ ...store.hero }); }, [store.hero]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
